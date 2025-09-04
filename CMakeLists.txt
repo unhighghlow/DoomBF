@@ -35,6 +35,5 @@ else()
 endif()
 
 add_subdirectory(tcc)
-#add_subdirectory(platform)
-#add_subdirectory(doom)
+add_subdirectory(platform)
 
