@@ -140,7 +140,8 @@ seh_scopetable:
     .long seh_except
 
 seh_handler:
-    jmp _except_handler3
+1:    jmp 1b
+//    jmp _except_handler3
 
 .globl ___try__
 ___try__:
