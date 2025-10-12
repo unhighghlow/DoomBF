@@ -1,4 +1,3 @@
-set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/tcc.exe")  # Path to your tcc.exe, adjust if needed
 set(SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/mini_doom.c"
     "${CMAKE_SOURCE_DIR}/doom/am_map.c"
@@ -79,10 +78,15 @@ add_custom_target(
     DEPENDS ${OUT}
 )
 
+add_custom_target(clean_mini_doom ALL
+    COMMAND ${CMAKE_COMMAND} -E remove "${OUT}"
+    COMMENT "\n~~~~ Remove old mini_doom"
+)
+
 add_custom_command(TARGET mini_doom POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OUT}" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/doom.wad" "${CMAKE_SOURCE_DIR}/bin/"
     COMMENT "\n~~~~ Copying WAD file to bin directory"
 )
 
-add_dependencies(mini_doom tcc)
+add_dependencies(mini_doom tcc clean_mini_doom)

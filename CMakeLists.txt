@@ -13,6 +13,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/latest")
 
+set(BF_COMPILE_OPTIONS "-O3")
+
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/make)
 
 if(MSVC)
@@ -35,5 +37,9 @@ else()
 endif()
 
 add_subdirectory(tcc)
+set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/tcc.exe")  # Path to your tcc.exe, adjust if needed
+
 add_subdirectory(platform)
 
+add_subdirectory(bf/hackablebf)
+add_subdirectory(bf/industrial-bf)
