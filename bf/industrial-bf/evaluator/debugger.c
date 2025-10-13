@@ -89,7 +89,7 @@ void debugger_print_instruction(char inst[]) {
 void debugger_call(char reason, CELL tape[], short program[], unsigned long dp, unsigned long pc) {
         if (reason == BREAK_REASON_INSTRUCTION && !debugger_stepper) return;
 
-        printf("program:\n");
+        printf("program: 0x%x\n", pc);
         for (int offset = -2; offset < 5; offset++) {
                 if ((-offset) <= pc || offset >= 0) {
                         if (!offset) {
@@ -102,7 +102,7 @@ void debugger_call(char reason, CELL tape[], short program[], unsigned long dp, 
                 }
         }
 
-        printf("tape:\n");
+        printf("tape: 0x%x\n", dp);
         for (int offset = -3; offset < 4; offset++) {
                 printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
                 printf(" ");
