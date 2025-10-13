@@ -47,7 +47,7 @@ add_custom_command(TARGET tcc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/test/test.cmd" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/tcc/win32/include" "${CMAKE_SOURCE_DIR}/bin/include"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/tcc/include" "${CMAKE_SOURCE_DIR}/bin/include"
-    COMMENT "\n~~~~ Copying tcc binary to bin directory"
+    COMMENT "\n\n~~~~ Copying tcc binary to bin directory"
 )
 
 
