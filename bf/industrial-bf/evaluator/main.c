@@ -90,7 +90,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	register unsigned long pc = -1;
 	register unsigned long dp = 0;
 	register union command inst;
-	char last_page = 0;
+	register char last_page = 0;
 
 	for (int i = 0; i < 0x100; i++) {
 		jumptable[i] = &&ignore;
@@ -123,12 +123,12 @@ minus:
 
 right:
 	dp+=((unsigned long)inst.d.arg) + 1;
-	check_page_transition(tape, 1, dp, &last_page);
+	CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
 	NEXT
 
 left:
 	dp-=(short)inst.d.arg + 1;
-	check_page_transition(tape, -1, dp, &last_page);
+	CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
 	NEXT
 
 output:

@@ -13,13 +13,16 @@ char get_page_n(unsigned long dp) {
 	return dp / PAGE_SIZE % 4;
 }
 
-void check_page_transition(CELL tape[], signed char expected_direction, unsigned long dp, char *last_page) {
-	char cur_page = get_page_n(dp);
-	if ((*last_page) == cur_page) {
-		return;
-	}
-	*last_page = cur_page;
+#define CHECK_PAGE_TRANSITION(tape, expected_direction, dp, last_page) \
+{ \
+	char cur_page = get_page_n(dp); \
+	if (last_page != cur_page) { \
+                last_page = cur_page; \
+                perform_page_switch(tape, expected_direction, dp); \
+	} \
+}
 
+void perform_page_switch(CELL tape[], signed char expected_direction, unsigned long dp) {
         // 0      1      2      3  
         // store keep current load
         // current page ^
@@ -56,7 +59,7 @@ void store_page(CELL tape[], unsigned long page_uid) {
         fclose(f);
 }
 
-inline void load_page(CELL tape[], unsigned long page_uid) {
+void load_page(CELL tape[], unsigned long page_uid) {
         char page_n = page_uid % 4;
         CELL *target = &tape[PAGE_SIZE*page_n];
 
