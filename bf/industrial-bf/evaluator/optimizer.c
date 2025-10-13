@@ -46,6 +46,8 @@ short *optimize(char program_in[]) {
         };
 
         vector_push(&program_out, (char)count);
+        vector_push(&program_out, (char)0x00);
+        vector_push(&program_out, (char)0x00);
 
         return vector_unwrap(&program_out);
 }
