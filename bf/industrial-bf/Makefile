@@ -1,8 +1,8 @@
 ibf: evaluator/
-	${CC} evaluator/main.c -g -o ibf ${CCFLAGS}
+	${CC} evaluator/main.c -g -O3 -o ibf ${CCFLAGS}
 
 bld: loader/
-	${CC} loader/loader.c -g -o bld ${CCFLAGS}
+	${CC} loader/loader.c -g -O3 -o bld ${CCFLAGS}
 
 run: ibf
 	./ibf
