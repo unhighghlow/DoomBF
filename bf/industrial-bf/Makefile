@@ -1,16 +1,10 @@
-ibf: src/
-	${CC} src/main.c -g -O3 -o ibf ${CCFLAGS}
+ibf: evaluator/
+	${CC} evaluator/main.c -g -o ibf ${CCFLAGS}
 
-bfm: src/
-	${CC} src/macros.c -g -O3 -o bfm ${CCFLAGS}
-
-bld: src/
-	${CC} src/loader.c -g -O3 -o bld ${CCFLAGS}
-
-debug: src/
-	${CC} src/main.c -DDEBUG -g -o ibf ${CCFLAGS}
+bld: loader/
+	${CC} loader/loader.c -g -o bld ${CCFLAGS}
 
 run: ibf
 	./ibf
 
-.PHONY: run debug
+.PHONY: run
