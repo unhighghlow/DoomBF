@@ -8,3 +8,4 @@ bin
 *.VC.db
 *.VC.opendb
 *.user
+tmp

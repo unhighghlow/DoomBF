@@ -3,12 +3,14 @@
 
 [-]
 
->[-]+>[-]+<<[>->-<]>[>-]<[->>
+>[-]+>[-]+<<[>->-<]>[>-]<[-<
 
     | do stuff
-    | you now on 4th cell
+    | you now on 1st cell
+    >>>
     ++++++++[>++++++++<-]>+.<
+    <<<
     | end of stuff
-    | now you should be on 4th cell
+    | now you should be on 1st cell
 
-<<]<
+>]<
