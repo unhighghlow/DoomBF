@@ -12,21 +12,14 @@ set(CMAKE_C_STANDARD 11)
 add_custom_command(
     OUTPUT ibf
     COMMAND chcp 65001
-    COMMAND ${TCC_EXE} -m32 -o ibf.exe ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
+    COMMAND ${TCC_EXE} -m32 -o ibf.exe ${CMAKE_CURRENT_SOURCE_DIR}/evaluator/main.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
     COMMENT "\n~~~~ Building industrial-bf\\ibf.exe with tcc"
-)
-
-add_custom_command(
-    OUTPUT bfm
-    COMMAND chcp 65001
-    COMMAND ${TCC_EXE} -m32 -o bfm.exe ${CMAKE_CURRENT_SOURCE_DIR}/src/macros.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
-    COMMENT "\n~~~~ Building industrial-bf\\bfm.exe with tcc"
 )
 
 add_custom_command(
     OUTPUT bld
     COMMAND chcp 65001
-    COMMAND ${TCC_EXE} -m32 -o bld.exe ${CMAKE_CURRENT_SOURCE_DIR}/src/loader.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
+    COMMAND ${TCC_EXE} -m32 -o bld.exe ${CMAKE_CURRENT_SOURCE_DIR}/loader/main.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
     COMMENT "\n~~~~ Building industrial-bf\\bld.exe with tcc"
 )
 
