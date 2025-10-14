@@ -1,5 +1,8 @@
 set(SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/mini_doom.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/heap.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/printf.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/doom_crt.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/win_doom.c"
     "${CMAKE_SOURCE_DIR}/doom/am_map.c"
     "${CMAKE_SOURCE_DIR}/doom/DOOM.c"
     "${CMAKE_SOURCE_DIR}/doom/doomdef.c"
