@@ -12,6 +12,11 @@
 #include "vector.c"
 #include "optimizer.c"
 #include "infinite-tape.c"
+
+#ifdef DEBUGGER
+#include "debugger.c"
+#endif
+
 #include "config.h"
 
 char* read_file(char* filename, unsigned long *program_length);
@@ -87,6 +92,9 @@ union command {
 const void* jumptable[0x100];
 
 void evaluate(short program[], CELL tape[], unsigned long loops[]) {
+#ifdef DEBUGGER
+        debugger_init();
+#endif
 	register unsigned long pc = -1;
 	register unsigned long dp = 0;
 	register union command inst;
@@ -104,10 +112,25 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	jumptable['.'] = &&output;
 	jumptable['['] = &&loopstart;
 	jumptable[']'] = &&loopend;
+#ifdef DEBUGGER
+	jumptable['#'] = &&breakinst;
+#endif
+
+#ifdef DEBUGGER
+
+#define NEXT \
+	inst.raw = program[++pc]; \
+        if (inst.d.cmd != '#') \
+                debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
+	goto *(jumptable[inst.d.cmd]);
+
+#else
 
 #define NEXT \
 	inst.raw = program[++pc]; \
 	goto *(jumptable[inst.d.cmd]);
+
+#endif
 
 ignore:
 	NEXT
@@ -140,11 +163,16 @@ loopstart:
 		pc=loops[pc];
 	NEXT
 
-
 loopend:
 	if (tape[dp%HOT_TAPE])
 		pc=loops[pc];
 	NEXT
+
+#ifdef DEBUGGER
+breakinst:
+        debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
+        NEXT
+#endif
 
 exit:
 	return;

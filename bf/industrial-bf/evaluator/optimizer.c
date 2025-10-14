@@ -1,5 +1,7 @@
 // bfm - Converts BrainF to BrainFMacros
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,7 +22,11 @@ short *optimize(char program_in[]) {
                     cur_char != '[' &&
                     cur_char != ']' &&
                     cur_char != '.' &&
-                    cur_char != ',') continue;
+                    cur_char != ','
+#ifdef DEBUGGER
+                    && cur_char != '#'
+#endif
+                    ) continue;
 
                 count++;
                 /* This will be TRUE for the first iteration */
