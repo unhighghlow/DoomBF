@@ -7,4 +7,7 @@ bld: loader/
 run: ibf
 	./ibf
 
+test: ibf
+	./test.sh
+
 .PHONY: run
