@@ -79,12 +79,6 @@ void debugger_print_instruction(char inst[]) {
                 case ',':
                         printf(",");
                         break;
-                case 'A':
-                        printf("A");
-                        break;
-                case 'U':
-                        printf("U");
-                        break;
                 case '=':
                         printf("= 0x%02x", (unsigned char)arg);
                         break;

@@ -99,7 +99,6 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	register unsigned long dp = 0;
 	register union command inst;
 	register char last_page = 0;
-	register CELL accum;
 
 	for (int i = 0; i < 0x100; i++) {
 		jumptable[i] = &&ignore;
@@ -113,8 +112,6 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	jumptable['.'] = &&output;
 	jumptable['['] = &&loopstart;
 	jumptable[']'] = &&loopend;
-	jumptable['A'] = &&load;
-	jumptable['U'] = &&store;
 	jumptable['='] = &&set;
 #ifdef DEBUGGER
 	jumptable['#'] = &&breakinst;
@@ -170,14 +167,6 @@ loopstart:
 loopend:
 	if (tape[dp%HOT_TAPE])
 		pc=loops[pc];
-	NEXT
-
-load:
-        accum = tape[dp%HOT_TAPE];
-	NEXT
-
-store:
-        tape[dp%HOT_TAPE] += accum;
 	NEXT
 
 set:
