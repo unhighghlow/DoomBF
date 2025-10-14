@@ -99,6 +99,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	register unsigned long dp = 0;
 	register union command inst;
 	register char last_page = 0;
+	register CELL accum;
 
 	for (int i = 0; i < 0x100; i++) {
 		jumptable[i] = &&ignore;
@@ -112,7 +113,9 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	jumptable['.'] = &&output;
 	jumptable['['] = &&loopstart;
 	jumptable[']'] = &&loopend;
-	jumptable['^'] = &&move;
+	jumptable['A'] = &&load;
+	jumptable['U'] = &&store;
+	jumptable['='] = &&set;
 #ifdef DEBUGGER
 	jumptable['#'] = &&breakinst;
 #endif
@@ -169,22 +172,16 @@ loopend:
 		pc=loops[pc];
 	NEXT
 
-move:
-{
-        CELL accum;
-        char direction = -1;
-        if (inst.d.arg > 0) {
-                direction = 1;
-        }
+load:
         accum = tape[dp%HOT_TAPE];
-        tape[dp%HOT_TAPE] = 0;
-        dp += inst.d.arg;
-	CHECK_PAGE_TRANSITION(tape, direction, dp, last_page);
+	NEXT
 
-        tape[dp%HOT_TAPE] += accum;
-        dp -= inst.d.arg;
-	CHECK_PAGE_TRANSITION(tape,-direction, dp, last_page);
-}
+store:
+        tape[dp%HOT_TAPE] = accum;
+	NEXT
+
+set:
+        tape[dp%HOT_TAPE] = (unsigned char)inst.d.arg;
 	NEXT
 
 #ifdef DEBUGGER

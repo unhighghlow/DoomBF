@@ -79,12 +79,20 @@ void debugger_print_instruction(char inst[]) {
                 case ',':
                         printf(",");
                         break;
-                case '^':
-                        printf("^ % 3d", (char)arg);
+                case 'A':
+                        printf("A");
+                        break;
+                case 'U':
+                        printf("U");
+                        break;
+                case '=':
+                        printf("= 0x%02x", (unsigned char)arg);
                         break;
                 case '#':
                         printf("#");
                         break;
+		default:
+			printf("???");
         }
         printf("\n");
 }

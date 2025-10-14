@@ -39,6 +39,7 @@ char apply_copying_shorthand(struct vector *prog) {
         long pos = prog->length-2;
         char move_order = 0;
         char move_offset = 0;
+        signed char move_direction = 0;
         struct instruction inst;
 
         // ending bracket
@@ -58,10 +59,12 @@ char apply_copying_shorthand(struct vector *prog) {
 
         // exit from the move destination
         inst = vec_read(prog, pos);
-        if (inst.cmd == '>' && inst.arg < 127) {
-                move_offset = -(inst.arg+1);
-        } else if (inst.cmd == '<' && inst.arg < 127) {
-                move_offset = (inst.arg+1);
+        if (inst.cmd == '>') {
+                move_offset = inst.arg;
+		move_direction = -1;
+        } else if (inst.cmd == '<') {
+                move_offset = inst.arg;
+		move_direction = 1;
         } else return 0;
         shift(pos);
 
@@ -73,12 +76,12 @@ char apply_copying_shorthand(struct vector *prog) {
 
 
         // entrance to the move destination
-        if (move_offset > 0) {
+        if (move_direction > 0) {
                 assert_match(cmd, prog, pos, '>');
-                assert_match(arg, prog, pos, move_offset-1);
+                assert_match(arg, prog, pos, move_offset);
         } else {
                 assert_match(cmd, prog, pos, '<');
-                assert_match(arg, prog, pos, -move_offset-1);
+                assert_match(arg, prog, pos, move_offset);
         }
         shift(pos);
 
@@ -94,17 +97,95 @@ char apply_copying_shorthand(struct vector *prog) {
         assert_match(cmd, prog, pos, '[');
 
         vector_truncate(prog, pos);
-        vector_push(prog, '^');
-        vector_push(prog, move_offset);
+
+        vector_push(prog, 'A');
+        vector_push(prog, 0);
+
+        vector_push(prog, '=');
+        vector_push(prog, 0);
+
+	if (move_direction > 0) {
+		vector_push(prog, '>');
+	} else {
+		vector_push(prog, '<');
+	}
+	vector_push(prog, move_offset);
+
+        vector_push(prog, 'U');
+        vector_push(prog, 0);
+
+	if (move_direction > 0) {
+		vector_push(prog, '<');
+	} else {
+		vector_push(prog, '>');
+	}
+	vector_push(prog, move_offset);
 
         return 1;
+}
+
+char apply_cancellation(struct vector *prog) {
+        long pos = prog->length-2;
+	char first_instruction;
+	char first_arg;
+	char second_instruction;
+	char second_arg;
+	char fin_instruction;
+	char fin_arg;
+        struct instruction inst;
+
+        inst = vec_read(prog, pos);
+	first_instruction = inst.cmd;
+	first_arg = inst.arg+1;
+
+	switch (inst.cmd) {
+		case '+':
+			second_instruction = '-';
+			break;
+		case '-':
+			second_instruction = '+';
+			break;
+		case '<':
+			second_instruction = '>';
+			break;
+		case '>':
+			second_instruction = '<';
+			break;
+		default:
+			return 0;
+	}
+	shift(pos);
+
+        inst = vec_read(prog, pos);
+	if (inst.cmd != second_instruction)
+		return 0;
+
+	second_arg = inst.arg+1;
+
+	vector_truncate(prog, pos);
+
+	if (first_arg > second_arg) {
+		fin_instruction = first_instruction;
+		fin_arg = first_arg - second_arg;
+	}
+	if (first_arg < second_arg) {
+		fin_instruction = second_instruction;
+		fin_arg = second_arg - first_arg;
+	}
+
+	if (first_arg != second_arg) {
+		vector_push(prog, fin_instruction);
+		vector_push(prog, fin_arg-1);
+	}
+
+	return 1;
 }
 
 void apply_shorthands(struct vector *prog) {
         char changed;
         do {
                 changed = 0;
-                //changed |= apply_loop_cancellation(prog);
+                changed |= apply_cancellation(prog);
                 changed |= apply_copying_shorthand(prog);
         } while (changed);
 }
