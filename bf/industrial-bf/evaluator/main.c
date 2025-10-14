@@ -177,7 +177,7 @@ load:
 	NEXT
 
 store:
-        tape[dp%HOT_TAPE] = accum;
+        tape[dp%HOT_TAPE] += accum;
 	NEXT
 
 set:
