@@ -79,6 +79,9 @@ void debugger_print_instruction(char inst[]) {
                 case ',':
                         printf(",");
                         break;
+                case '^':
+                        printf("^ % 3d", (char)arg);
+                        break;
                 case '#':
                         printf("#");
                         break;

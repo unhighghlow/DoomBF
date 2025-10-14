@@ -30,6 +30,10 @@ void vector_push(struct vector *vec, char val) {
         *(vec->ptr+(vec->length-1)) = val;
 }
 
+void vector_truncate(struct vector *vec, long new_length) {
+        vec->length = new_length;
+}
+
 void vector_pop(struct vector *vec, long ind) {
         vec->length--;
         for (long i = ind; i < vec->length; i++) {

@@ -112,6 +112,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	jumptable['.'] = &&output;
 	jumptable['['] = &&loopstart;
 	jumptable[']'] = &&loopend;
+	jumptable['^'] = &&move;
 #ifdef DEBUGGER
 	jumptable['#'] = &&breakinst;
 #endif
@@ -166,6 +167,24 @@ loopstart:
 loopend:
 	if (tape[dp%HOT_TAPE])
 		pc=loops[pc];
+	NEXT
+
+move:
+{
+        CELL accum;
+        char direction = -1;
+        if (inst.d.arg > 0) {
+                direction = 1;
+        }
+        accum = tape[dp%HOT_TAPE];
+        tape[dp%HOT_TAPE] = 0;
+        dp += inst.d.arg;
+	CHECK_PAGE_TRANSITION(tape, direction, dp, last_page);
+
+        tape[dp%HOT_TAPE] += accum;
+        dp -= inst.d.arg;
+	CHECK_PAGE_TRANSITION(tape,-direction, dp, last_page);
+}
 	NEXT
 
 #ifdef DEBUGGER
