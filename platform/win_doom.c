@@ -196,7 +196,14 @@ int Win_LoadFile(const char *p_file_path) {
     g_DoomWadAddress = buffer;
     g_DoomWadSize = (unsigned int)file_size;
     
-    printf("Successfully loaded file: %s (%u bytes)\n", p_file_path, g_DoomWadSize);
+    unsigned long long  summ = 0;
+   for (unsigned  ii = 0; ii < g_DoomWadSize; ii++)
+   {
+    summ += 1 + ((unsigned char *)g_DoomWadAddress)[ii];
+   }
+
+
+    printf("Successfully loaded file: %s (%u bytes) %lld code\n", p_file_path, g_DoomWadSize, summ);
     return 0;
 }
 
