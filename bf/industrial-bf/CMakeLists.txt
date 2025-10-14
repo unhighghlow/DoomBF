@@ -41,4 +41,10 @@ add_custom_target(
     DEPENDS ${TCC_IBF_OUT} ${TCC_BLD_OUT}
 )
 
-add_dependencies(industrialbf tcc)
+add_custom_target(clean_industrialbf ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -f "${TCC_IBF_OUT}"
+    COMMAND ${CMAKE_COMMAND} -E rm -f "${TCC_BLD_OUT}"
+    COMMENT "\n~~~~ Remove old ibf/bld"
+)
+
+add_dependencies(industrialbf tcc clean_industrialbf)

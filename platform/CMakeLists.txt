@@ -82,7 +82,7 @@ add_custom_target(
 )
 
 add_custom_target(clean_mini_doom ALL
-    COMMAND ${CMAKE_COMMAND} -E remove "${OUT}"
+    COMMAND ${CMAKE_COMMAND} -E rm -f "${OUT}"
     COMMENT "\n~~~~ Remove old mini_doom"
 )
 
