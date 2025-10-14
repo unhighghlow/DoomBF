@@ -2,5 +2,5 @@
                          2. The page size must be bigger than of equal to 256 */
 #define CELL uint16_t
 
-#define DEBUGGER
+// #define DEBUGGER
 #define CELL_FORMAT_STRING "% 4x"
