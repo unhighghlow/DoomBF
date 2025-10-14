@@ -21,14 +21,16 @@
 <               = move to 2nd cell
 
 [
-    ->>          = go to 4th cell
+    -<          = go to 1st cell
 
     | do stuff
-    | you now on 4th cell
+    | you now on 1st cell
+    >>>
     ++++++++[>++++++++<-]>+.<
+    <<<
     | end of stuff
-    | now you should be on 4th cell
+    | now you should be on 1st cell
 
-    <<          = go to 2nd cell
+    >          = go to 2nd cell
 ]
 <               = go to 1st cell
