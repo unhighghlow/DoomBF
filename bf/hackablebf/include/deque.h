@@ -79,8 +79,8 @@
             size_t __half = (D).back.length / 2;                            \
             VEC_RESERVE((D).front, __half, RES);                            \
             if (!(RES)) break;                                              \
-            for(size_t i = 0; i < __half; i++) {                            \
-                (D).front.data[i] = (D).back.data[__half-1-i];              \
+            for(size_t __i = 0; __i < __half; __i++) {                      \
+                (D).front.data[__i] = (D).back.data[__half-1-__i];          \
             }                                                               \
             size_t __to_move = (D).back.length - __half;                    \
             __to_move *= sizeof((D).back.data[0]);                          \
@@ -111,8 +111,8 @@
             size_t __half = (D).front.length / 2;                        \
             VEC_RESERVE((D).back, __half, RES);                          \
             if (!(RES)) break;                                           \
-            for(size_t i = 0; i < __half; i++) {                         \
-                (D).back.data[i] = (D).front.data[__half-1-i];           \
+            for(size_t __i = 0; __i < __half; __i++) {                     \
+                (D).back.data[__i] = (D).front.data[__half-1-__i];       \
             }                                                            \
             size_t __to_move = (D).front.length - __half;                \
             __to_move *= sizeof((D).front.data[0]);                      \

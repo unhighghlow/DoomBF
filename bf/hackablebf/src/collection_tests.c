@@ -17,6 +17,8 @@ void test_vec_init(void) {
     assert(vec.data == NULL);
     assert(vec.length == 0);
     assert(vec.capacity == 0);
+
+    VEC_FREE(vec);
     printf("OK\n");
 }
 
@@ -130,6 +132,7 @@ void test_vec_remove(void) {
     }
 
     VEC_REMOVE(vec, 2, res);
+
     assert(res);
     assert(vec.length == 4);
 
