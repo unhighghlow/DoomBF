@@ -3,6 +3,7 @@
 #include <bf.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <time.h>
 
 void run_brainfuck_program(
     load_code_func_t load_code,
@@ -10,6 +11,7 @@ void run_brainfuck_program(
     input_func_t io_read,
     output_func_t io_write
 ) {
+    clock_t start = clock();
     tape_element_t* tape = init_tape();
     code_ptr_t code = load_code();
     code_ptr_t code_iterator = &code[0];
@@ -110,6 +112,10 @@ void run_brainfuck_program(
         }
         ++cp;
     }
+
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("\ntime of execution: %f s\n", time_spent);
 
     epilogue:
     VEC_FREE(args);
