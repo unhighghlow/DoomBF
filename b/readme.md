@@ -14,5 +14,6 @@
 - call.b
 - ifnot.b
 - ifnot_human.b
+- jump_human.b
 - mem.b
 - test.b
