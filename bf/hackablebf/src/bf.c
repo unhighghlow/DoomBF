@@ -14,7 +14,6 @@ void run_brainfuck_program(
     clock_t start = clock();
     tape_element_t* tape = init_tape();
     char* code = load_code();
-    char* code_iterator = &code[0];
     
     VEC_TYPE(code_pointer_t) return_stack = VEC_INIT();
     VEC_TYPE(bf_op_t) ops = VEC_INIT();
@@ -28,13 +27,13 @@ void run_brainfuck_program(
     
     bf_op_t op;
     arg_t arg;
-    
+
+    char* code_iterator = &code[0];
     while(*code_iterator) { 
         // preparation of the code for more effective interpretation
         // this includes:
         // 1. skip all comments
         // 2. merge repetitions of '+', '-', '>', '<', ',' or '.'
-        arg = 1;
         bool skip_comment = false;
         
         switch(*code_iterator++) {
@@ -53,7 +52,7 @@ void run_brainfuck_program(
         
         if (ops.length == 0 || op == OP_START_LOOP || op == OP_END_LOOP) {
             VEC_PUSH(ops, op, res);
-            VEC_PUSH(args, arg, res);
+            VEC_PUSH(args, 1, res);
             continue;
         }
         
@@ -64,7 +63,7 @@ void run_brainfuck_program(
         }
         
         VEC_PUSH(ops, op, res);
-        VEC_PUSH(args, arg, res);
+        VEC_PUSH(args, 1, res);
     }
 
     while(cp < ops.length) {        
