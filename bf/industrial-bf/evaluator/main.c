@@ -182,7 +182,7 @@ char* read_file(char* filename, unsigned long *program_length) {
 	FILE *f = fopen(filename, "rb");
         if (!f) {
                 printf("cannot open file\n");
-                abort();
+		exit(1);
         }
 	fseek(f, 0, SEEK_END);
 	unsigned long fsize = ftell(f);
