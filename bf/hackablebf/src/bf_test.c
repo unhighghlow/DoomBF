@@ -4,9 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-code_ptr_t test_program;
+char* test_program;
 
-bool read_file(char* file_name, code_ptr_t* result) {
+bool read_file(char* file_name, char** result) {
 	FILE* f = fopen(file_name, "rb");
     if (!f) {
         printf("cannot open file\n");
@@ -16,7 +16,7 @@ bool read_file(char* file_name, code_ptr_t* result) {
 	size_t len = (size_t) ftell(f);
 	fseek(f, 0, SEEK_SET);
 
-	*result = (code_ptr_t) malloc(len + 1);
+	*result = (char*) malloc(len + 1);
 	fread(*result, len, 1, f);
 	fclose(f);
 
@@ -24,7 +24,7 @@ bool read_file(char* file_name, code_ptr_t* result) {
 	return true;
 }
 
-code_ptr_t copy_string(code_ptr_t literal) {
+char* copy_string(char* literal) {
     size_t len = strlen(literal);
 
     char* new_str = (char*) malloc(len + 1);
@@ -38,7 +38,7 @@ code_ptr_t copy_string(code_ptr_t literal) {
     return new_str;
 }
 
-code_ptr_t get_test_code(void) {
+char* get_test_code(void) {
     return copy_string(test_program);
 }
 

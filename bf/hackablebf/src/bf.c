@@ -13,10 +13,10 @@ void run_brainfuck_program(
 ) {
     clock_t start = clock();
     tape_element_t* tape = init_tape();
-    code_ptr_t code = load_code();
-    code_ptr_t code_iterator = &code[0];
+    char* code = load_code();
+    char* code_iterator = &code[0];
     
-    VEC_TYPE(size_t) return_stack = VEC_INIT();
+    VEC_TYPE(code_pointer_t) return_stack = VEC_INIT();
     VEC_TYPE(bf_op_t) ops = VEC_INIT();
     VEC_TYPE(arg_t) args = VEC_INIT();
 
