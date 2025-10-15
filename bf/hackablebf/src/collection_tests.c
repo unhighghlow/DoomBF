@@ -25,7 +25,7 @@ void test_vec_push_and_grow(void) {
     VEC_TYPE(test_int_t) vec = VEC_INIT();
     bool res;
 
-    for (size_t i = 0; i < 8; i++) {
+    for (test_int_t i = 0; i < 8; i++) {
         VEC_PUSH(vec, i, res);
         assert(res);
         assert(vec.capacity == 8);
@@ -397,7 +397,7 @@ void test_deque_pop_front_and_back(void) {
     assert(res);
     assert(val == 3);
 
-    for(size_t i = 4; i < 8; i++) {
+    for(test_int_t i = 4; i < 8; i++) {
         DEQUE_PUSH_BACK(d, i, res);
         assert(res);
     }
@@ -556,12 +556,12 @@ void test_deque_pop_front_and_back(void) {
     DEQUE_POP_FRONT(d, val, res);
     assert(!res);
 
-    for(size_t i = 0; i < 8; i++) {
+    for(test_int_t i = 0; i < 8; i++) {
         DEQUE_PUSH_FRONT(d, i, res);
         assert(res);
     }
 
-    for(size_t i = 0; i < 4; i++) {
+    for(test_int_t i = 0; i < 4; i++) {
         DEQUE_PUSH_BACK(d, i, res);
         assert(res);
     }

@@ -21,6 +21,7 @@
 
 typedef char* code_ptr_t;
 DECL_VEC(code_ptr_t);
+DECL_VEC(size_t);
 
 typedef tape_element_t (*input_func_t)(void);
 typedef void (*output_func_t)(tape_element_t);
