@@ -22,7 +22,7 @@ endif()
 
 add_custom_command(
     OUTPUT ${TCC_IBF_OUT}
-    COMMAND chcp 65001
+    #COMMAND chcp 65001
     COMMAND ${TCC_EXE} -m32 -o ${TCC_IBF_OUT} ${CMAKE_CURRENT_SOURCE_DIR}/evaluator/main.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TCC_IBF_OUT} "${CMAKE_SOURCE_DIR}/bin/"
     COMMENT "\n~~~~ Building ${TCC_IBF_OUT} with tcc"
@@ -30,7 +30,7 @@ add_custom_command(
 
 add_custom_command(
     OUTPUT ${TCC_BLD_OUT}
-    COMMAND chcp 65001
+    #COMMAND chcp 65001
     COMMAND ${TCC_EXE} -m32 -o ${TCC_BLD_OUT} ${CMAKE_CURRENT_SOURCE_DIR}/loader/loader.c -I${CMAKE_CURRENT_SOURCE_DIR} -I ${CMAKE_SOURCE_DIR}/bin/include -L ${CMAKE_SOURCE_DIR}/bin
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TCC_BLD_OUT} "${CMAKE_SOURCE_DIR}/bin/"
     COMMENT "\n~~~~ Building ${TCC_BLD_OUT} with tcc"

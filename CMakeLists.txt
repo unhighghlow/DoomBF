@@ -29,6 +29,7 @@ else()
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64")
   elseif(${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
     find_package(PkgConfig REQUIRED)
+    find_package(X11 REQUIRED)
     pkg_check_modules(MISC REQUIRED gtk+-3.0 glib-2.0)
     set(MISC_FRAMEWORKS "${MISC_STATIC_LIBRARIES}")
   endif()
@@ -36,8 +37,14 @@ else()
     add_definitions(-DGL_SILENCE_DEPRECATION=1)
 endif()
 
+if (WIN32)
+    set(_TCC_BIN "tcc.exe")
+else()
+    set(_TCC_BIN "tcc")
+endif()
+
 add_subdirectory(tcc)
-set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/tcc.exe")  # Path to your tcc.exe, adjust if needed
+set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/${_TCC_BIN}")  # Path to your tcc.exe, adjust if needed
 
 add_subdirectory(platform)
 
