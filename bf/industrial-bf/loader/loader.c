@@ -39,12 +39,12 @@ void store_page(char *page, long page_size, long page_uid) {
 	FILE *f = fopen(filename, "wb");
         if (!f) {
                 printf("page store failed! (open)\n");
-                abort();
+                exit(1);
         }
 
 	if (fwrite(page, 1, page_size, f) < page_size) {
                 printf("page store failed! (write)\n");
-                abort();
+                exit(1);
         }
         printf("ok\n");
         fclose(f);
