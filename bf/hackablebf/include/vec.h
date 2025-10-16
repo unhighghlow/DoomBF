@@ -10,6 +10,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+#ifndef SIZE_MAX
+#define SIZE_MAX 0xFFFFFFFF
+#endif
+
 /**
 * Объявляет тип вектора для элементов типа ETYPE.
 * Пример: DECL_VEC(int) → объявляет struct int_vec_t.

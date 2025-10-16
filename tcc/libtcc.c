@@ -972,12 +972,12 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type)
     /* paths for crt objects */
     tcc_split_path(s, &s->crt_paths, &s->nb_crt_paths, CONFIG_TCC_CRTPREFIX);
     /* add libc crt1/crti objects */
-    if ((output_type == TCC_OUTPUT_EXE || output_type == TCC_OUTPUT_DLL) &&
-        !s->nostdlib) {
-        if (output_type != TCC_OUTPUT_DLL)
-            tcc_add_crt(s, "crt1.o");
-        tcc_add_crt(s, "crti.o");
-    }
+    //if ((output_type == TCC_OUTPUT_EXE || output_type == TCC_OUTPUT_DLL) &&
+    //    !s->nostdlib) {
+    //    if (output_type != TCC_OUTPUT_DLL)
+    //        tcc_add_crt(s, "crt1.o");
+    //    tcc_add_crt(s, "crti.o");
+    //}
 #endif
     return 0;
 }

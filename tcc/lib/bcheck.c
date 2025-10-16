@@ -31,7 +31,20 @@
 #endif
 
 #if !defined(_WIN32)
-#include <unistd.h>
+ typeof(void *(size_t size, const void *caller))
+           *volatile  __malloc_hook;
+
+       typeof(void *(void *p, size_t size, const void *caller))
+           *volatile  __realloc_hook;
+
+       typeof(void *(size_t align, size_t size, const void *caller))
+           *volatile  __memalign_hook;
+
+       typeof(void *(void *p, const void *caller))
+           *volatile  __free_hook;
+
+       typeof(void (void))            *__malloc_initialize_hook;
+       typeof(void (void)) *volatile   __after_mrecore_hook;
 #endif
 
 /* #define BOUND_DEBUG */

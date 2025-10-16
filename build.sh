@@ -1,8 +1,11 @@
 #! /bin/bash
-cd ./bf/industrial-bf
-make ibf
-cd ../..
-if [ ! -d /tmp ]; then
-    mkdir ./tmp
+if [ ! -d ./buildx ]; then
+    mkdir ./buildx
 fi
-mv ./bf/industrial-bf/ibf ./tmp/
+if [ ! -d ./bin ]; then
+    mkdir ./bin
+fi
+cd ./buildx
+cmake ..
+cmake --build .
+cd ..

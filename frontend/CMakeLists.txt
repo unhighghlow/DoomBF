@@ -73,35 +73,44 @@ if (WIN32)
     set(LINK_OPTS -luser32 -lgdi32)
     set(FRONTEND_SRC "${CMAKE_CURRENT_SOURCE_DIR}/win_doom.c")
     set(OUT "${CMAKE_BINARY_DIR}/mini_doom.exe")
+
+    add_custom_command(
+        OUTPUT ${OUT}
+        #COMMAND chcp 65001
+        COMMAND ${TCC_EXE} -o ${OUT} ${DOOM_SRC} ${CRT_SRC} ${FRONTEND_SRC} -I${CMAKE_SOURCE_DIR} ${INC_OPTS} -L${CMAKE_SOURCE_DIR}/bin ${LINK_OPTS}
+        DEPENDS ${SRC}
+        COMMENT "\n~~~~ Building mini_doom with tcc"
+    )
+
+    add_custom_target(
+        mini_doom ALL
+        DEPENDS ${OUT}
+    )
+
+    add_custom_target(clean_mini_doom ALL
+        COMMAND ${CMAKE_COMMAND} -E rm -f "${OUT}"
+        COMMENT "\n~~~~ Remove old mini_doom"
+    )
+
+    add_custom_command(TARGET mini_doom POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OUT}" "${CMAKE_SOURCE_DIR}/bin/"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/doom.wad" "${CMAKE_SOURCE_DIR}/bin/"
+        COMMENT "\n~~~~ Copying WAD file to bin directory"
+    )
+
+    add_dependencies(mini_doom tcc clean_mini_doom)
+
 else()
-    set(INC_OPTS "-I" "${CMAKE_SOURCE_DIR}/bin/include")
+    set(INC_OPTS -I ${CMAKE_SOURCE_DIR})
     set(LINK_OPTS -lX11)
     set(FRONTEND_SRC "${CMAKE_CURRENT_SOURCE_DIR}/lnx_doom.c")
-    set(OUT "${CMAKE_BINARY_DIR}/mini_doom")
+    set(OUT "mini_doom")
+    
+    add_executable(${OUT} ${DOOM_SRC} ${CRT_SRC} ${FRONTEND_SRC})
+    #target_compile_options(${OUT} PRIVATE -Wno-pointer-to-int-cast)
+    #target_compile_options(${OUT} PRIVATE -m32)
+    target_link_libraries(${OUT} PRIVATE ${LINK_OPTS})
+    target_include_directories(${OUT} PRIVATE ${INC_OPTS})
+    add_custom_command(TARGET ${OUT} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${OUT}> "${CMAKE_SOURCE_DIR}/bin/")
 endif()
 
-add_custom_command(
-    OUTPUT ${OUT}
-    #COMMAND chcp 65001
-    COMMAND ${TCC_EXE} -m32 -o ${OUT} ${DOOM_SRC} ${CRT_SRC} ${FRONTEND_SRC} -I${CMAKE_SOURCE_DIR} ${INC_OPTS} -L${CMAKE_SOURCE_DIR}/bin ${LINK_OPTS}
-    DEPENDS ${SRC}
-    COMMENT "\n~~~~ Building mini_doom with tcc"
-)
-
-add_custom_target(
-    mini_doom ALL
-    DEPENDS ${OUT}
-)
-
-add_custom_target(clean_mini_doom ALL
-    COMMAND ${CMAKE_COMMAND} -E rm -f "${OUT}"
-    COMMENT "\n~~~~ Remove old mini_doom"
-)
-
-add_custom_command(TARGET mini_doom POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OUT}" "${CMAKE_SOURCE_DIR}/bin/"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/data/doom.wad" "${CMAKE_SOURCE_DIR}/bin/"
-    COMMENT "\n~~~~ Copying WAD file to bin directory"
-)
-
-add_dependencies(mini_doom tcc clean_mini_doom)

@@ -1,6 +1,7 @@
 .vs
 .vscode
 build/**
+buildx/**
 .build*
 .DS_Store
 bin

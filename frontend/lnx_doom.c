@@ -9,7 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "doom_env.h"  
+#include <crt/doom_env.h>  
 
 struct DoomControlRegs g_LinuxDoomControlRegs;
 void *g_DoomHeapAddress = NULL;

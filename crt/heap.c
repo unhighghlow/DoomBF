@@ -87,8 +87,11 @@ void* Heap_Malloc(HeapCfg* p_heap, size_t xWantedSize);
 
 //OS_ASSERT
 
-
+#ifdef _WIN32
 #define portPOINTER_SIZE_TYPE    uint32_t
+#else
+#define portPOINTER_SIZE_TYPE    uint64_t
+#endif
 
 #define HEAP_BYTE_ALIGNMENT         8
 #define HEAP_BYTE_ALIGNMENT_MASK    (0x0007)

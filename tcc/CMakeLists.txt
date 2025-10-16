@@ -7,14 +7,23 @@ project(tcc)
 set(_TCC_Type WIN32)
 
 add_executable(tcc ${_TCC_Type} tcc.c)
+add_custom_command(TARGET tcc POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:tcc> "${CMAKE_SOURCE_DIR}/bin/")
+if (WIN32)
+set(TCC_INCS -I ${CMAKE_SOURCE_DIR}/tcc/win32/include -I ${CMAKE_SOURCE_DIR}/tcc/win32/include/winapi)
 target_compile_definitions(tcc PRIVATE TCC_TARGET_PE)
 target_compile_definitions(tcc PRIVATE TCC_TARGET_I386) 
+else()
+
+set(TCC_INCS -I ${CMAKE_SOURCE_DIR}/tcc/win32/include -I ${CMAKE_SOURCE_DIR}/tcc/win32/include/winapi)
+target_compile_definitions(tcc PRIVATE TCC_TARGET_ELF)
+target_compile_definitions(tcc PRIVATE TCC_TARGET_I386) 
+endif()
 target_compile_definitions(tcc PRIVATE ONE_SOURCE=1) 
 
 #target_include_directories(tcc PRIVATE ${CMAKE_SOURCE_DIR}/extern)
 
-set(_TCC_BinDir ${CMAKE_BINARY_DIR}/bin)
-set(_TCC_ARGS -m32 -I ${CMAKE_SOURCE_DIR}/tcc/include -I ${CMAKE_SOURCE_DIR}/tcc/win32/include -I ${CMAKE_SOURCE_DIR}/tcc/win32/include/winapi)
+set(_TCC_BinDir ${CMAKE_SOURCE_DIR}/bin)
+set(_TCC_ARGS -I ${CMAKE_SOURCE_DIR}/tcc/include ${TCC_INCS})
 
 if (WIN32)
     set_target_properties(tcc PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
@@ -32,12 +41,11 @@ add_custom_command(TARGET tcc POST_BUILD
     COMMAND ${_TCC_BinDir}/${_TCC_BIN} ${_TCC_ARGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/win32/lib/dllmain.c
     COMMAND ${_TCC_BinDir}/${_TCC_BIN} ${_TCC_ARGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/win32/lib/chkstk.S
     COMMAND ${_TCC_BinDir}/${_TCC_BIN} ${_TCC_ARGS} -w -c ${CMAKE_CURRENT_SOURCE_DIR}/lib/bcheck.c
-    COMMAND ${_TCC_BinDir}/${_TCC_BIN} ${_TCC_ARGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/lib/alloca86.S
-    COMMAND ${_TCC_BinDir}/${_TCC_BIN} ${_TCC_ARGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/lib/alloca86-bt.S
-    COMMAND ${_TCC_BinDir}/${_TCC_BIN} -m32 -ar libtcc1-32.a libtcc1.o crt1.o crt1w.o wincrt1.o wincrt1w.o dllcrt1.o dllmain.o chkstk.o bcheck.o alloca86.o alloca86-bt.o
+    COMMAND ${_TCC_BinDir}/${_TCC_BIN} -ar libtcc1-32.a libtcc1.o crt1.o crt1w.o wincrt1.o wincrt1w.o dllcrt1.o dllmain.o chkstk.o bcheck.o
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:tcc>" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_TCC_BinDir}/libtcc1-32.a" "${CMAKE_SOURCE_DIR}/bin/"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_TCC_BinDir}/crt1.o" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/test/hello.c" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/test/test.cmd" "${CMAKE_SOURCE_DIR}/bin/"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/tcc/win32/include" "${CMAKE_SOURCE_DIR}/bin/include"
