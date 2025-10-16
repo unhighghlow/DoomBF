@@ -49,7 +49,7 @@
                 (RES) = true;                                                                \
             } else { (RES) = false; }                                                        \
         } else { (RES) = true; }                                                             \
-    } while (0)
+    } while (false)
 
 /**
 * Освобождает неиспользуемую память вектора.
@@ -78,7 +78,7 @@
                 (NEW_C) *= 2;                 \
             }                                 \
         }                                     \
-    } while (0)
+    } while (false)
 
 /**
 * Увеличивает ёмкость вектора при необходимости.
@@ -92,7 +92,7 @@
         if ((RES)) {                                                  \
             VEC_RESERVE(V, __new_capacity, RES);                      \
         }                                                             \
-    } while(0)
+    } while(false)
 
 /**
 * Добавляет элемент в конец вектора.
@@ -104,7 +104,7 @@
         if ((RES)) {                      \
             (V).data[(V).length++] = (X); \
         }                                 \
-    } while(0)
+    } while(false)
 
 /**
 * Получает элемент по индексу без проверок.
@@ -125,7 +125,7 @@
             (RES) = true;                    \
             (OUT) = VEC_GET_UNCHECKED(V, I); \
         }                                    \
-    } while (0)
+    } while(false)
 
 /**
 * Получает указатели начального и конечного элемента вектора для итерирования.
@@ -144,7 +144,7 @@
             (E) = (V).data + V.length-1;           \
             (RES) = true;                          \
         }                                          \
-    } while(0)
+    } while(false)
 
 /**
 * Удаляет элемент по индексу, сдвигая остальные.
@@ -153,7 +153,7 @@
 */
 #define VEC_REMOVE(V, I, RES)                                                 \
     do {                                                                      \
-        if ((V).length == 0 || (I) >= (V).length) {                           \
+        if (!(V).length || (I) >= (V).length) {                           \
             (RES) = false;                                                    \
         } else {                                                              \
             (RES) = true;                                                     \
@@ -162,7 +162,7 @@
                 memmove((V).data + (I), (V).data + (I) + 1, __to_move);       \
             --(V).length;                                                     \
         }                                                                     \
-    } while(0)
+    } while(false)
 
 /**
 * Удаляет последний элемент и возвращает его.
@@ -178,12 +178,12 @@
             (OUT) = VEC_GET_UNCHECKED(V, (V).length-1); \
             --(V).length;                               \
         }                                               \
-    } while (0)
+    } while(false)
 
 /**
 * Очищает вектор без освобождения памяти.
 */
-#define VEC_CLEAR(V) (V).length = 0;
+#define VEC_CLEAR(V) do { (V).length = 0; } while(0)
 
 /**
 * Освобождает память вектора и обнуляет его поля.
@@ -196,6 +196,6 @@
             (V).length = 0;     \
             (V).capacity = 0;   \
         }                       \
-    } while(0)
+    } while(false)
 
 #endif
