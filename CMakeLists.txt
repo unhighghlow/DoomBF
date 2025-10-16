@@ -50,7 +50,9 @@ endif()
 add_subdirectory(tcc)
 set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/${_TCC_BIN}")  # Path to your tcc.exe, adjust if needed
 
+if(MSVC)
 add_subdirectory(frontend)
+endif()
 
 add_subdirectory(bf/hackablebf)
 add_subdirectory(bf/industrial-bf)
