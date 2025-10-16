@@ -12,7 +12,7 @@ target_include_directories(hackablebf
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-#add_custom_command(TARGET hackablebf POST_BUILD
-#    COMMAND ${CMAKE_COMMAND} -E copy_if_different hackablebf "${CMAKE_SOURCE_DIR}/bin/"
-#    COMMENT "\n~~~~ Copying tools to bin directory"
-#)
+add_custom_command(TARGET hackablebf POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:hackablebf>" "${CMAKE_SOURCE_DIR}/bin/"
+    COMMENT "\n~~~~ Copying hackablebf to bin directory"
+)
