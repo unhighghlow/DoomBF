@@ -17,6 +17,10 @@
 #include "debugger.c"
 #endif
 
+#ifdef ASSERTS
+#include "asserts.c"
+#endif
+
 #include "config.h"
 
 char* read_file(char* filename, unsigned long *program_length);
@@ -99,6 +103,11 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	register unsigned long dp = 0;
 	register union command inst;
 	register char last_page = 0;
+#ifdef ASSERTS
+	char *assert_name;
+	unsigned long assert_expected;
+	unsigned long assert_got;
+#endif
 
 	for (int i = 0; i < 0x100; i++) {
 		jumptable[i] = &&ignore;
@@ -114,6 +123,10 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	jumptable[']'] = &&loopend;
 #ifdef DEBUGGER
 	jumptable['#'] = &&breakinst;
+#endif
+#ifdef ASSERTS
+	jumptable['@'] = &&assert_location;
+	jumptable['!'] = &&assert_value;
 #endif
 
 #ifdef DEBUGGER
@@ -172,6 +185,29 @@ loopend:
 breakinst:
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
         NEXT
+#endif
+
+
+#ifdef ASSERTS
+assert_location:
+	assert_name = "location";
+	assert_got = dp;
+	goto assert_common;
+
+assert_value:
+	assert_name = "value";
+	assert_got = tape[dp];
+	goto assert_common;
+
+assert_common:
+	ASSERT_READ_EXPECTED(assert_expected, pc, program)
+	if (assert_expected != assert_got) {
+		printf("assertion failed: %s\n", assert_name);
+		printf("expected: 0x%lx\n", assert_expected);
+		printf("got: 0x%lx\n", assert_got);
+		exit(1);
+	}
+	NEXT
 #endif
 
 exit:
