@@ -15,18 +15,40 @@ short *optimize(char program_in[]) {
         int count = -1;
 
         while (cur_char = program_in[ind++]) {
-                if (cur_char != '+' &&
-                    cur_char != '-' &&
-                    cur_char != '>' &&
-                    cur_char != '<' &&
-                    cur_char != '[' &&
-                    cur_char != ']' &&
-                    cur_char != '.' &&
-                    cur_char != ','
-#ifdef DEBUGGER
-                    && cur_char != '#'
+#ifdef ASSERTS
+                char assert_active;
+
+                if (assert_active && !(
+                    (cur_char >= '0' && cur_char <= '9')
+                 || (cur_char >= 'a' && cur_char <= 'f')
+                )) {
+                        assert_active = 0;
+                }
+
+                if (
+                    (cur_char == '@')
+                 || (cur_char == '!')
+                ) {
+                        assert_active = 1;
+                }
 #endif
-                    ) continue;
+
+                if (cur_char != '+'
+                 && cur_char != '-'
+                 && cur_char != '>'
+                 && cur_char != '<'
+                 && cur_char != '['
+                 && cur_char != ']'
+                 && cur_char != '.'
+                 && cur_char != ','
+#ifdef DEBUGGER
+                 && cur_char != '#'
+#endif
+#ifdef ASSERTS
+		 && !assert_active
+#endif
+                ) continue;
+
 
                 count++;
                 /* This will be TRUE for the first iteration */
