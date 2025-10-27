@@ -6,7 +6,7 @@
 > **Идея:** собрать *Doom* и запустить его поверх Brainfuck.
 > Мы используем оригинальный исходный код Doom, компилируем его в Brainfuck, а затем исполняем BF‑код в собственной среде.
 
-![DoomBF banner](./data/banner_doom_bf.png)
+![DoomBF banner](./data/banner_v2.png)
 
 **Репозиторий:** https://github.com/sit-itmo/DoomBF
 
@@ -102,6 +102,9 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 - https://habr.com/ru/companies/badoo/articles/428878/
 - https://spiiin.github.io/blog/621874082/
 - https://github.com/srorso/SoftFloat
+- https://codeberg.org/highghlow/esotope-bfc
+- https://github.com/tomhea/c2fj
+- https://github.com/aidantambling/Fuse-Wad-Explorer
 
 ## Лицензия
 Код публичный: использовать/скачивать/модифицировать — свободно. (При необходимости добавим отдельный `LICENSE`.)
