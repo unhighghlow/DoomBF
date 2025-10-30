@@ -1,6 +1,8 @@
 #include "config.h"
 
+#define PAGE_SIZE (1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)
+#define PAGE_COUNT (~((unsigned long)0)>>PAGE_SIZE_POWER)
 
 void load_page(CELL *tape, unsigned long page_uid);
 void store_page(CELL *tape, unsigned long page_uid);
@@ -29,8 +31,8 @@ void perform_page_switch(CELL tape[], signed char expected_direction, unsigned l
         // expected direction -->
         
         unsigned long current_page_uid = get_page_uid(dp);
-        store_page(tape, current_page_uid - (expected_direction * 2));
-        load_page(tape, current_page_uid + expected_direction);
+        store_page(tape, (current_page_uid - (expected_direction * 2)) % PAGE_COUNT);
+        load_page(tape, (current_page_uid + expected_direction) % PAGE_COUNT);
 }
 
 void store_page(CELL tape[], unsigned long page_uid) {

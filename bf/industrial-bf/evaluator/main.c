@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 	CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
 	memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
-	load_page(tape, -1);
+	load_page(tape, PAGE_COUNT);
 	load_page(tape, 0);
 	load_page(tape, 1);
 
@@ -149,21 +149,21 @@ ignore:
 	NEXT
 
 plus:
-	tape[dp%HOT_TAPE]+=(short)inst.d.arg + 1;
+	tape[dp%HOT_TAPE]+=(unsigned char)inst.d.arg + 1;
 	NEXT
 
 minus:
-	tape[dp%HOT_TAPE]-=(short)inst.d.arg + 1;
+	tape[dp%HOT_TAPE]-=(unsigned char)inst.d.arg + 1;
 	NEXT
 
 
 right:
-	dp+=((unsigned long)inst.d.arg) + 1;
+	dp+=((unsigned char)inst.d.arg) + 1;
 	CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
 	NEXT
 
 left:
-	dp-=(short)inst.d.arg + 1;
+	dp-=((unsigned char)inst.d.arg) + 1;
 	CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
 	NEXT
 
@@ -196,7 +196,7 @@ assert_location:
 
 assert_value:
 	assert_name = "value";
-	assert_got = tape[dp];
+	assert_got = tape[dp%HOT_TAPE];
 	goto assert_common;
 
 assert_common:
