@@ -43,11 +43,6 @@ int main(int argc, char *argv[]) {
 	char *program_raw = (char*) read_file(filename, &program_length);
         short *program = optimize(program_raw);
 
-	unsigned long *loops = safe_malloc(program_length * (sizeof (unsigned long)));
-	if (find_loops(program, loops)) {
-                return 1;
-        }
-
 	CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
 	memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
@@ -55,34 +50,7 @@ int main(int argc, char *argv[]) {
 	load_page(tape, 0);
 	load_page(tape, 1);
 
-        evaluate(program, tape, loops);
-}
-
-int find_loops(short program[], unsigned long loops[]) {
-	unsigned long ind = -1;
-	char sp = 0;
-	unsigned long stack[256];
-	char inst;
-
-	while ((inst = program[++ind])) {
-		if (inst == '[') {
-			stack[sp++] = ind;
-		}
-		else if (inst == ']') {
-                        if (sp == 0) {
-                                puts("loop stack underflow\n");
-                                return 1;
-                        }
-			sp--;
-			loops[ind] = stack[sp];
-			loops[stack[sp]] = ind;
-		}
-	}
-        if (sp > 0) {
-                puts("loop stack overflow\n");
-                return 1;
-        }
-        return 0;
+        evaluate(program, tape, NULL);
 }
 
 union command {
@@ -90,7 +58,7 @@ union command {
                 char cmd;
                 char arg;
         } d;
-        short raw;
+        unsigned long raw;
 };
 
 const void* jumptable[0x100];
@@ -132,7 +100,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 #ifdef DEBUGGER
 
 #define NEXT \
-	inst.raw = program[++pc]; \
+	inst.raw = (unsigned long)(program[++pc]); \
         if (inst.d.cmd != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
 	goto *(jumptable[inst.d.cmd]);
@@ -140,7 +108,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 #else
 
 #define NEXT \
-	inst.raw = program[++pc]; \
+	inst.raw = (unsigned long)(program[++pc]); \
 	goto *(jumptable[inst.d.cmd]);
 
 #endif
