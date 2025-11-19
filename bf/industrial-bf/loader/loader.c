@@ -4,36 +4,43 @@
 #include <stdio.h>
 #include <string.h>
 
+
 void store_page(char *page, long page_size, long page_uid);
 
 int main(int argc, char *argv[]) {
         char *filename;
+        long page_size_power;
         long page_size;
 
         if (argc < 2 || argc > 3) {
-                printf("usage: %s <input> [page_size=4096]\n", argv[0]);
+                printf("usage: %s <input> [page_size_power=24]\n", argv[0]);
                 return 1;
         }
 
         filename = argv[1];
         if (argc == 3) {
-                page_size = atoi(argv[2]);
+                page_size_power = atoi(argv[2]);
         } else {
-                page_size = 4096;
+                page_size_power = 24;
         }
+	page_size = 1<<page_size_power;
 
         FILE *f = fopen(filename, "rb");
         char *tape = malloc(page_size);
         long page_uid = 0;
 
         while (fread(tape, 1, page_size, f)) {
-                store_page(tape, page_size, page_uid++);
+                store_page(tape, page_size_power, page_uid++);
         }
 }
 
-void store_page(char *page, long page_size, long page_uid) {
-        char filename[17];
-        sprintf(filename, "%016lx", page_uid);
+void store_page(char *page, long page_size_power, long page_uid) {
+        long page_size;
+	page_size = 1<<page_size_power;
+
+        char filename_buf[17];
+	char *filename = filename_buf + (page_size_power / 4);
+        sprintf(filename_buf, "%016lx", page_uid);
         printf("storing page: 0x%s... ", filename);
 
         FILE *f = fopen(filename, "wb");
