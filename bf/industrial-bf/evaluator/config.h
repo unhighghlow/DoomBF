@@ -4,4 +4,4 @@
 
 // #define DEBUGGER
 // #define ASSERTS
-#define CELL_FORMAT_STRING "% 2x"
+#define CELL_FORMAT_STRING "%2x"

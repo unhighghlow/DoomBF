@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         
         unsigned long program_length;
         char *program_raw = (char*) read_file(filename, &program_length);
-        short *program = optimize(program_raw);
+        char *program = optimize(program_raw);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
         memset(tape, 0, HOT_TAPE * (sizeof (CELL)));

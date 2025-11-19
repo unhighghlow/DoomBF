@@ -181,7 +181,7 @@ char process_instruction(char program_in[], unsigned long *ind, struct vector *p
         }
 }
 
-short *optimize(char program_in[]) {
+char *optimize(char program_in[]) {
         struct vector program_out = vector_create(0);
 
         unsigned long ind = 0;

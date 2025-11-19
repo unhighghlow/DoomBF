@@ -60,7 +60,7 @@ unsigned char debugger_print_instruction(char inst[]) {
                 case '-':
                 case '>':
                 case '<':
-                        printf("%c % 3u\n", cmd, (unsigned char)arg + 1);
+                        printf("%c %3u\n", cmd, (unsigned char)arg + 1);
                         return 2;
                 case '[':
                 case ']':
