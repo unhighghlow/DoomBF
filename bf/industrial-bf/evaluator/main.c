@@ -17,10 +17,6 @@
 #include "debugger.c"
 #endif
 
-#ifdef ASSERTS
-#include "asserts.c"
-#endif
-
 #include "config.h"
 
 char* read_file(char *filename, unsigned long *program_length);
@@ -155,6 +151,7 @@ loopend:
 #ifdef DEBUGGER
 breakinst:
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
+	pc+=1;
         NEXT
 #endif
 
@@ -168,16 +165,17 @@ assert_location:
 assert_value:
 	assert_name = "value";
 	assert_got = tape[dp%HOT_TAPE];
-	goto assert_common;
+	/* fallthrough */
 
 assert_common:
-	ASSERT_READ_EXPECTED(assert_expected, pc, program)
+	assert_expected = ntohll(inst.raw)&0x00ffffffffffffff;
 	if (assert_expected != assert_got) {
 		printf("assertion failed: %s\n", assert_name);
 		printf("expected: 0x%lx\n", assert_expected);
 		printf("got: 0x%lx\n", assert_got);
 		exit(1);
 	}
+	pc+=8;
 	NEXT
 #endif
 

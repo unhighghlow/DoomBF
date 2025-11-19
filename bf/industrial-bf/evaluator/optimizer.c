@@ -71,11 +71,13 @@ char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program
 	}
 	vector_push(program_out, inst);
 	vector_push(program_out, (char)count-1);
+	return 0;
 }
 
 char proc_unrol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
 	vector_push(program_out, program_in[*ind]);
 	(*ind)++;
+	return 0;
 }
 
 char proc_open_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
@@ -85,6 +87,7 @@ char proc_open_loop(char program_in[], unsigned long *ind, struct vector *progra
 		0xaaaaaaaaaaaaaaaa
 	); // Mock instruction
 	(*ind)++;
+	return 0;
 }
 
 char proc_close_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
@@ -106,6 +109,42 @@ char proc_close_loop(char program_in[], unsigned long *ind, struct vector *progr
 		start_ind | (((long)']') << (8*7))
 	);
 	(*ind)++;
+	return 0;
+}
+
+signed char parse_digit(char digit) {
+	signed char out;
+	if (digit >= '0' && digit <= '9') {
+		out = digit-'0';
+	} else if (digit >= 'a' && digit <= 'f'){
+		out = digit-'a'+0xa;
+	} else {
+		out = -1;
+	}
+	return out;
+}
+
+char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+	char inst = program_in[*ind];
+	signed char digit;
+	unsigned long val = 0;
+	while (1) {
+		(*ind)++;
+		digit = parse_digit(program_in[*ind]);
+		if (digit == -1)
+			break;
+		val <<= 4;
+		val += digit;
+	}
+	if (val&0xff00000000000000) {
+		printf("error: `%c` assert value overflow: %lx\n", inst, val);
+	}
+
+	vector_push_long(
+		program_out,
+		val | (((long)inst) << (8*7))
+	);
+	return 0;
 }
 
 char process_instruction(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
@@ -129,6 +168,12 @@ char process_instruction(char program_in[], unsigned long *ind, struct vector *p
 		case ']':
 			return
 			proc_close_loop(program_in, ind, program_out, ld);
+#ifdef ASSERTS
+		case '@':
+		case '!':
+			return
+			proc_assert(program_in, ind, program_out, ld);
+#endif
 		default:
 			// Comment
 			(*ind)++;

@@ -57,35 +57,27 @@ unsigned char debugger_print_instruction(char inst[]) {
 
         switch (cmd) {
                 case '+':
-                        printf("+ % 3u\n", (unsigned char)arg + 1);
-			return 2;
                 case '-':
-                        printf("- % 3u\n", (unsigned char)arg + 1);
-			return 2;
                 case '>':
-                        printf("> % 3u\n", (unsigned char)arg + 1);
-			return 2;
                 case '<':
-                        printf("< % 3u\n", (unsigned char)arg + 1);
+                        printf("%c % 3u\n", cmd, (unsigned char)arg + 1);
 			return 2;
                 case '[':
-                        printf("[ %lx\n", (full&0x00ffffffffffffff)+8);
-			return 8;
                 case ']':
-                        printf("] %lx\n", (full&0x00ffffffffffffff)+8);
+                        printf("%c %lx\n", cmd, (full&0x00ffffffffffffff)+8);
+			return 8;
+                case '!':
+                case '@':
+                        printf("%c %lx\n", cmd, (full&0x00ffffffffffffff));
 			return 8;
                 case '.':
-                        printf(".\n");
-			return 1;
                 case ',':
-                        printf(",\n");
-			return 1;
                 case '#':
-                        printf("#\n");
+                        printf("%c\n", cmd);
 			return 1;
 		default:
 			printf("??? %x %x\n", (unsigned char)cmd, (unsigned char)arg);
-			break;
+			return 2;
         }
 }
 
