@@ -23,9 +23,9 @@
 
 #include "config.h"
 
-char* read_file(char* filename, unsigned long *program_length);
+char* read_file(char *filename, unsigned long *program_length);
 int find_loops(short *program, unsigned long *loops);
-void evaluate(short *program, CELL *tape, unsigned long *loops);
+void evaluate(char *program, CELL *tape, unsigned long *loops);
 
 int main(int argc, char *argv[]) {
 	char *filename;
@@ -63,11 +63,11 @@ union command {
 
 const void* jumptable[0x100];
 
-void evaluate(short program[], CELL tape[], unsigned long loops[]) {
+void evaluate(char program[], CELL tape[], unsigned long loops[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
-	register unsigned long pc = -1;
+	register unsigned long pc = 0;
 	register unsigned long dp = 0;
 	register union command inst;
 	register char last_page = 0;
@@ -76,10 +76,6 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 	unsigned long assert_expected;
 	unsigned long assert_got;
 #endif
-
-	for (int i = 0; i < 0x100; i++) {
-		jumptable[i] = &&ignore;
-	}
 
 	jumptable[0] = &&exit;
 	jumptable['+'] = &&plus;
@@ -100,7 +96,7 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 #ifdef DEBUGGER
 
 #define NEXT \
-	inst.raw = (unsigned long)(program[++pc]); \
+	inst.raw = *(unsigned long*)(&program[pc]); \
         if (inst.d.cmd != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
 	goto *(jumptable[inst.d.cmd]);
@@ -108,45 +104,53 @@ void evaluate(short program[], CELL tape[], unsigned long loops[]) {
 #else
 
 #define NEXT \
-	inst.raw = (unsigned long)(program[++pc]); \
+	inst.raw = *(unsigned long*)(&program[pc]); \
 	goto *(jumptable[inst.d.cmd]);
 
 #endif
 
-ignore:
 	NEXT
 
 plus:
 	tape[dp%HOT_TAPE]+=(unsigned char)inst.d.arg + 1;
+	pc+=2;
 	NEXT
 
 minus:
 	tape[dp%HOT_TAPE]-=(unsigned char)inst.d.arg + 1;
+	pc+=2;
 	NEXT
 
 
 right:
 	dp+=((unsigned char)inst.d.arg) + 1;
 	CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+	pc+=2;
 	NEXT
 
 left:
 	dp-=((unsigned char)inst.d.arg) + 1;
 	CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
+	pc+=2;
 	NEXT
 
 output:
 	putchar(tape[dp%HOT_TAPE]);
+	pc+=1;
 	NEXT
 
 loopstart:
+        #define endind ntohll(inst.raw)&0x00ffffffffffffff
 	if (!tape[dp%HOT_TAPE])
-		pc=loops[pc];
+		pc=endind;
+	pc+=8;
 	NEXT
 
 loopend:
+        #define begind ntohll(inst.raw)&0x00ffffffffffffff
 	if (tape[dp%HOT_TAPE])
-		pc=loops[pc];
+		pc=begind;
+	pc+=8;
 	NEXT
 
 #ifdef DEBUGGER

@@ -82,15 +82,18 @@ void debugger_print_instruction(char inst[]) {
                 case '#':
                         printf("#");
                         break;
+		default:
+			printf("??? %x %x", (unsigned char)cmd, (unsigned char)arg);
+			break;
         }
         printf("\n");
 }
 
-void debugger_call(char reason, CELL tape[], short program[], unsigned long dp, unsigned long pc) {
+void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, unsigned long pc) {
         if (reason == BREAK_REASON_INSTRUCTION && !debugger_stepper) return;
 
         printf("program: 0x%lx\n", pc);
-        for (int offset = -2; offset < 5; offset++) {
+        for (int offset = -4; offset < 0xa; offset+=2) {
                 if ((-offset) <= pc || offset >= 0) {
                         if (!offset) {
                                 printf("> ");
@@ -98,7 +101,7 @@ void debugger_call(char reason, CELL tape[], short program[], unsigned long dp, 
                                 printf("  ");
                         }
                         printf("%04lx:\t", pc+offset);
-                        debugger_print_instruction((char*)&program[pc+offset]);
+                        debugger_print_instruction(&program[pc+offset]);
                         if (!program[pc+offset]) break;
                 }
         }
