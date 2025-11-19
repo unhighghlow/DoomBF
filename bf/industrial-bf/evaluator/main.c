@@ -24,8 +24,7 @@
 #include "config.h"
 
 char* read_file(char *filename, unsigned long *program_length);
-int find_loops(short *program, unsigned long *loops);
-void evaluate(char *program, CELL *tape, unsigned long *loops);
+void evaluate(char *program, CELL *tape);
 
 int main(int argc, char *argv[]) {
 	char *filename;
@@ -50,7 +49,7 @@ int main(int argc, char *argv[]) {
 	load_page(tape, 0);
 	load_page(tape, 1);
 
-        evaluate(program, tape, NULL);
+        evaluate(program, tape);
 }
 
 union command {
@@ -63,7 +62,7 @@ union command {
 
 const void* jumptable[0x100];
 
-void evaluate(char program[], CELL tape[], unsigned long loops[]) {
+void evaluate(char program[], CELL tape[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
