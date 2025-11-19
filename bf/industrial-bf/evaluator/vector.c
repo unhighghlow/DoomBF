@@ -47,7 +47,7 @@ void *vector_unwrap(struct vector *vec) {
 }
 
 void vector_push_long(struct vector *out, unsigned long item) {
-	for (int i = 0; i < 8; i++) {
-		vector_push(out, item>>(8*(7-i)));
-	}
+        for (int i = 0; i < 8; i++) {
+                vector_push(out, item>>(8*(7-i)));
+        }
 }

@@ -7,178 +7,178 @@
 #include <string.h>
 
 struct loop_data {
-	unsigned char sp;
-	unsigned long stack[256];
+        unsigned char sp;
+        unsigned long stack[256];
 };
 
 #define LD_PUSH(ld, i) \
-	if (ld->sp == 255) { \
-		printf("error: stack overflow\n"); \
-		return 1; \
-	} \
-	ld->stack[ld->sp] = i; \
-	ld->sp++
+        if (ld->sp == 255) { \
+                printf("error: stack overflow\n"); \
+                return 1; \
+        } \
+        ld->stack[ld->sp] = i; \
+        ld->sp++
 
 #define LD_POP(ld, i) \
-	if (ld->sp == 0) { \
-		printf("error: stack underflow\n"); \
-		return 1; \
-	} \
-	ld->sp--; \
-	i = ld->stack[ld->sp];
+        if (ld->sp == 0) { \
+                printf("error: stack underflow\n"); \
+                return 1; \
+        } \
+        ld->sp--; \
+        i = ld->stack[ld->sp];
 
 char is_comment(char inst) {
-	return !(
-		inst == '+'
-	     || inst == '-'
-	     || inst == '<'
-	     || inst == '>'
-	     || inst == '['
-	     || inst == ']'
-	     || inst == '.'
-	     || inst == ','
+        return !(
+                inst == '+'
+             || inst == '-'
+             || inst == '<'
+             || inst == '>'
+             || inst == '['
+             || inst == ']'
+             || inst == '.'
+             || inst == ','
 #ifdef DEBUGGER
-	     || inst == '#'
+             || inst == '#'
 #endif
 #ifdef ASSERTS
-	     || inst == '@'
-	     || inst == '!'
+             || inst == '@'
+             || inst == '!'
 #endif
-	);
+        );
 }
 
 char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	char inst = program_in[*ind];
-	unsigned ind1 = *ind;
-	char cur;
-	unsigned int count = 1;
-	while (1) {
-		(*ind)++;
-		cur = program_in[*ind];
+        char inst = program_in[*ind];
+        unsigned ind1 = *ind;
+        char cur;
+        unsigned int count = 1;
+        while (1) {
+                (*ind)++;
+                cur = program_in[*ind];
 
-		if (!cur)
-			break; // If reached EOF, exit
+                if (!cur)
+                        break; // If reached EOF, exit
 
-		if (cur != inst
-		 && !is_comment(cur)) 
-			break;
+                if (cur != inst
+                 && !is_comment(cur)) 
+                        break;
 
-		if (count >= 256)
-			break;
+                if (count >= 256)
+                        break;
 
-		if (!is_comment(cur))
-			count++;
-	}
-	vector_push(program_out, inst);
-	vector_push(program_out, (char)count-1);
-	return 0;
+                if (!is_comment(cur))
+                        count++;
+        }
+        vector_push(program_out, inst);
+        vector_push(program_out, (char)count-1);
+        return 0;
 }
 
 char proc_unrol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	vector_push(program_out, program_in[*ind]);
-	(*ind)++;
-	return 0;
+        vector_push(program_out, program_in[*ind]);
+        (*ind)++;
+        return 0;
 }
 
 char proc_open_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	LD_PUSH(ld, program_out->length);
-	vector_push_long(
-		program_out,
-		0xaaaaaaaaaaaaaaaa
-	); // Mock instruction
-	(*ind)++;
-	return 0;
+        LD_PUSH(ld, program_out->length);
+        vector_push_long(
+                program_out,
+                0xaaaaaaaaaaaaaaaa
+        ); // Mock instruction
+        (*ind)++;
+        return 0;
 }
 
 char proc_close_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	unsigned long start_ind;
-	if (*ind & 0xff000000) {
-		printf("error: index overflow\n");
-		return 1;
-	}
+        unsigned long start_ind;
+        if (*ind & 0xff000000) {
+                printf("error: index overflow\n");
+                return 1;
+        }
 
-	LD_POP(ld, start_ind);
+        LD_POP(ld, start_ind);
 
-	write_long(
-		program_out->ptr + start_ind,
-		program_out->length | (((long)'[') << (8*7))
-	);
+        write_long(
+                program_out->ptr + start_ind,
+                program_out->length | (((long)'[') << (8*7))
+        );
 
-	vector_push_long(
-		program_out,
-		start_ind | (((long)']') << (8*7))
-	);
-	(*ind)++;
-	return 0;
+        vector_push_long(
+                program_out,
+                start_ind | (((long)']') << (8*7))
+        );
+        (*ind)++;
+        return 0;
 }
 
 signed char parse_digit(char digit) {
-	signed char out;
-	if (digit >= '0' && digit <= '9') {
-		out = digit-'0';
-	} else if (digit >= 'a' && digit <= 'f'){
-		out = digit-'a'+0xa;
-	} else {
-		out = -1;
-	}
-	return out;
+        signed char out;
+        if (digit >= '0' && digit <= '9') {
+                out = digit-'0';
+        } else if (digit >= 'a' && digit <= 'f'){
+                out = digit-'a'+0xa;
+        } else {
+                out = -1;
+        }
+        return out;
 }
 
 char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	char inst = program_in[*ind];
-	signed char digit;
-	unsigned long val = 0;
-	while (1) {
-		(*ind)++;
-		digit = parse_digit(program_in[*ind]);
-		if (digit == -1)
-			break;
-		val <<= 4;
-		val += digit;
-	}
-	if (val&0xff00000000000000) {
-		printf("error: `%c` assert value overflow: %lx\n", inst, val);
-	}
+        char inst = program_in[*ind];
+        signed char digit;
+        unsigned long val = 0;
+        while (1) {
+                (*ind)++;
+                digit = parse_digit(program_in[*ind]);
+                if (digit == -1)
+                        break;
+                val <<= 4;
+                val += digit;
+        }
+        if (val&0xff00000000000000) {
+                printf("error: `%c` assert value overflow: %lx\n", inst, val);
+        }
 
-	vector_push_long(
-		program_out,
-		val | (((long)inst) << (8*7))
-	);
-	return 0;
+        vector_push_long(
+                program_out,
+                val | (((long)inst) << (8*7))
+        );
+        return 0;
 }
 
 char process_instruction(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	switch (program_in[*ind]) {
-		case '+':
-		case '-':
-		case '>':
-		case '<':
-			return
-			proc_rol_inst(program_in, ind, program_out, ld);
-		case '.':
-		case ',':
+        switch (program_in[*ind]) {
+                case '+':
+                case '-':
+                case '>':
+                case '<':
+                        return
+                        proc_rol_inst(program_in, ind, program_out, ld);
+                case '.':
+                case ',':
 #ifdef DEBUGGER
-		case '#':
+                case '#':
 #endif
-			return
-			proc_unrol_inst(program_in, ind, program_out, ld);
-		case '[':
-			return
-			proc_open_loop(program_in, ind, program_out, ld);
-		case ']':
-			return
-			proc_close_loop(program_in, ind, program_out, ld);
+                        return
+                        proc_unrol_inst(program_in, ind, program_out, ld);
+                case '[':
+                        return
+                        proc_open_loop(program_in, ind, program_out, ld);
+                case ']':
+                        return
+                        proc_close_loop(program_in, ind, program_out, ld);
 #ifdef ASSERTS
-		case '@':
-		case '!':
-			return
-			proc_assert(program_in, ind, program_out, ld);
+                case '@':
+                case '!':
+                        return
+                        proc_assert(program_in, ind, program_out, ld);
 #endif
-		default:
-			// Comment
-			(*ind)++;
-			return 0;
-	}
+                default:
+                        // Comment
+                        (*ind)++;
+                        return 0;
+        }
 }
 
 short *optimize(char program_in[]) {
@@ -189,30 +189,30 @@ short *optimize(char program_in[]) {
         char cur_char;
         int count = -1;
 
-	// Loop optimization
-	struct loop_data ld;
-	ld.sp = 0;
+        // Loop optimization
+        struct loop_data ld;
+        ld.sp = 0;
 
 #ifdef DEBUGGER
-	printf("constructing program...\n");
+        printf("constructing program...\n");
 #endif
-	while (program_in[ind]) {
-		process_instruction(program_in, &ind, &program_out, &ld);
-	}
-	if (ld.sp) {
-		printf("error: nonempty stack");
-		exit(1);
-	}
+        while (program_in[ind]) {
+                process_instruction(program_in, &ind, &program_out, &ld);
+        }
+        if (ld.sp) {
+                printf("error: nonempty stack");
+                exit(1);
+        }
 #ifdef DEBUGGER
-	printf("done\n");
+        printf("done\n");
 #endif
-	for (int i = 0; i < 8; i++) {
-		vector_push(&program_out, 0);
-	}
+        for (int i = 0; i < 8; i++) {
+                vector_push(&program_out, 0);
+        }
 /*
-	for (unsigned long i = 0; i < program_out.length; i++){
-		printf("%lx: %x\n", i, *(program_out.ptr + i));
-	}
+        for (unsigned long i = 0; i < program_out.length; i++){
+                printf("%lx: %x\n", i, *(program_out.ptr + i));
+        }
 */
         return vector_unwrap(&program_out);
 }

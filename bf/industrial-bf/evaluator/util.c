@@ -25,9 +25,9 @@ void *safe_realloc(void *ptr, long size) {
 }
 
 void write_long(char *ptr, unsigned long item) {
-	for (int i = 0; i < 8; i++) {
-		*(ptr+i) = item>>(8*(7-i));
-	}
+        for (int i = 0; i < 8; i++) {
+                *(ptr+i) = item>>(8*(7-i));
+        }
 }
 
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
