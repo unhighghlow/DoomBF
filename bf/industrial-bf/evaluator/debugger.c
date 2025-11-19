@@ -50,60 +50,59 @@ void debugger_init() {
         debugger_cmd();
 }
 
-void debugger_print_instruction(char inst[]) {
+unsigned char debugger_print_instruction(char inst[]) {
         char cmd = inst[0];
         char arg = inst[1];
+        unsigned long full = ntohll(*(unsigned long*)inst);
 
         switch (cmd) {
                 case '+':
-                        printf("+ % 3u", (unsigned char)arg + 1);
-                        break;
+                        printf("+ % 3u\n", (unsigned char)arg + 1);
+			return 2;
                 case '-':
-                        printf("- % 3u", (unsigned char)arg + 1);
-                        break;
+                        printf("- % 3u\n", (unsigned char)arg + 1);
+			return 2;
                 case '>':
-                        printf("> % 3u", (unsigned char)arg + 1);
-                        break;
+                        printf("> % 3u\n", (unsigned char)arg + 1);
+			return 2;
                 case '<':
-                        printf("< % 3u", (unsigned char)arg + 1);
-                        break;
+                        printf("< % 3u\n", (unsigned char)arg + 1);
+			return 2;
                 case '[':
-                        printf("[");
-                        break;
+                        printf("[ %lx\n", (full&0x00ffffffffffffff)+8);
+			return 8;
                 case ']':
-                        printf("]");
-                        break;
+                        printf("] %lx\n", (full&0x00ffffffffffffff)+8);
+			return 8;
                 case '.':
-                        printf(".");
-                        break;
+                        printf(".\n");
+			return 1;
                 case ',':
-                        printf(",");
-                        break;
+                        printf(",\n");
+			return 1;
                 case '#':
-                        printf("#");
-                        break;
+                        printf("#\n");
+			return 1;
 		default:
-			printf("??? %x %x", (unsigned char)cmd, (unsigned char)arg);
+			printf("??? %x %x\n", (unsigned char)cmd, (unsigned char)arg);
 			break;
         }
-        printf("\n");
 }
 
 void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, unsigned long pc) {
         if (reason == BREAK_REASON_INSTRUCTION && !debugger_stepper) return;
 
         printf("program: 0x%lx\n", pc);
-        for (int offset = -4; offset < 0xa; offset+=2) {
-                if ((-offset) <= pc || offset >= 0) {
-                        if (!offset) {
-                                printf("> ");
-                        } else {
-                                printf("  ");
-                        }
-                        printf("%04lx:\t", pc+offset);
-                        debugger_print_instruction(&program[pc+offset]);
-                        if (!program[pc+offset]) break;
-                }
+	unsigned long offset = 0;
+        for (int i = 0; i < 5; i++) {
+		if (!i) {
+			printf("> ");
+		} else {
+			printf("  ");
+		}
+		printf("%04lx:\t", pc+offset);
+		offset += debugger_print_instruction(&program[pc+offset]);
+		if (!program[pc+offset]) break;
         }
 
         printf("tape: 0x%lx\n", dp);
