@@ -27,11 +27,50 @@ struct loop_data {
 	ld->sp--; \
 	i = ld->stack[ld->sp];
 
+char is_comment(char inst) {
+	return !(
+		inst == '+'
+	     || inst == '-'
+	     || inst == '<'
+	     || inst == '>'
+	     || inst == '['
+	     || inst == ']'
+	     || inst == '.'
+	     || inst == ','
+#ifdef DEBUGGER
+	     || inst == '#'
+#endif
+#ifdef ASSERTS
+	     || inst == '@'
+	     || inst == '!'
+#endif
+	);
+}
+
 char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-	// TODO
-	vector_push(program_out, program_in[*ind]);
-	vector_push(program_out, 0);
-	(*ind)++;
+	char inst = program_in[*ind];
+	unsigned ind1 = *ind;
+	char cur;
+	unsigned int count = 1;
+	while (1) {
+		(*ind)++;
+		cur = program_in[*ind];
+
+		if (!cur)
+			break; // If reached EOF, exit
+
+		if (cur != inst
+		 && !is_comment(cur)) 
+			break;
+
+		if (count >= 256)
+			break;
+
+		if (!is_comment(cur))
+			count++;
+	}
+	vector_push(program_out, inst);
+	vector_push(program_out, (char)count-1);
 }
 
 char proc_unrol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
