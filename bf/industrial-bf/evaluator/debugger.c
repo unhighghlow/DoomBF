@@ -229,8 +229,10 @@ void show_string(char tape[], unsigned long addr, unsigned long length, unsigned
 }
 
 #define ELIPSIS { \
-        if (!elipsis) \
+        if (!elipsis) { \
+                CLOSE_STRING \
                 printf("..."); \
+        } \
         elipsis = 1; \
 }
 

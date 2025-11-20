@@ -2,7 +2,7 @@
 
 #define PAGE_SIZE (1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)
-#define PAGE_COUNT (~((unsigned long)0)>>PAGE_SIZE_POWER)
+#define PAGE_COUNT ((~((unsigned long)0)>>PAGE_SIZE_POWER)+1)
 
 void load_page(CELL *tape, unsigned long page_uid);
 void store_page(CELL *tape, unsigned long page_uid);
@@ -97,8 +97,8 @@ char is_addr_loaded(unsigned long dp, unsigned long addr) {
         unsigned long target_page = get_page_uid(addr);
 
         return (
-                target_page == (cur_page - 1)
+                target_page == ((cur_page - 1) % PAGE_COUNT)
              || target_page == cur_page
-             || target_page == (cur_page + 1)
+             || target_page == ((cur_page + 1) % PAGE_COUNT)
         );
 }
