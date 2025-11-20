@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <float.h>
 #include <math.h>
+#define ARRAYMAX 30000
 #define ARRAYSIZE 65536
 #define CODESIZE 65536
 
@@ -32,19 +33,49 @@ unsigned char array[ARRAYSIZE], code[CODESIZE];
 long p=0, q=0, length, c, max;
 unsigned long census[256];
 char *filename="";
+char *disabled_checks="";
 FILE *prog;
 double count=0, maxcount;
 
-void err(char *s){
+void err(char c){
+    char *s;
+    char a;
+    int i = 0;
+    while (a = disabled_checks[i++]) {
+        if (a == c) return;
+    }
+    switch (c) {
+        case 'f':
+            s = "I need a program filename"; break;
+        case 'm':
+            s = "Too many arguments"; break;
+        case 'e':
+            s = "Can't open that file"; break;
+        case 'c':
+            s = "Unmatched ']'"; break;
+        case 'p':
+            s = "Unmatched '['"; break;
+        case 'o':
+            s = "Overflow"; break;
+        case 'u':
+            s = "Underflow"; break;
+        case 'l':
+            s = "Too far left"; break;
+        case 'r':
+            s = "Too far right"; break;
+        case 't':
+            s = "Command count overflow"; break;
+    }
     fprintf(stderr, "Error detected at byte %ld of %s: %s!\n", q,filename,s);
     exit(1);
 }
 
 int main(int argc, char **argv){
-    if (argc > 2) err("Too many arguments");
-    if (argc < 2) err("I need a program filename");
-    if(!(prog = fopen(argv[1], "r"))) err("Can't open that file");
+    if (argc > 3) err('m');
+    if (argc < 2) err('f');
+    if(!(prog = fopen(argv[1], "r"))) err('e');
     filename=argv[1];
+    if (argc == 3) disabled_checks = argv[2];
     length = fread(code, 1, CODESIZE, prog);
     fclose(prog);
     maxcount=pow(FLT_RADIX, DBL_MANT_DIG);
@@ -53,17 +84,17 @@ int main(int argc, char **argv){
         if (code[q]=='[') targets[--stackp]=q;
         if (code[q]==']'){
             if(stackp<CODESIZE) targets[targets[q]=targets[stackp++]]=q;
-            else err("Unmatched ']'");
+            else err('c');
         }
         if (code[q]=='#') for (p='+'; p<=']'; p++) census[p]=0;
     }
-    if(stackp<CODESIZE) q=targets[stackp], err("Unmatched '['");
+    if(stackp<CODESIZE) q=targets[stackp], err('p');
     for(q=0,p=0;q<length;q++){
         switch(code[q]){
-            case '+': if(array[p]++>=255) err("Overflow"); break;
-            case '-': if(array[p]--<=0) err("Underflow"); break;
-            case '<': p--; if(p<0) err("Too far left"); break;
-            case '>': if(++p>max)max=p;if(p>=ARRAYSIZE)err("Too far right");
+            case '+': if(array[p]++>=255) err('o'); break;
+            case '-': if(array[p]--<=0) err('u'); break;
+            case '<': p--; if(p<0) err('l'); break;
+            case '>': if(++p>max)max=p;if(p>=ARRAYMAX)err('r');
                           break;
 #if '\n' == 10
             case ',': if((c=getchar())!= EOF) array[p]=c; break;
@@ -77,9 +108,9 @@ int main(int argc, char **argv){
             case '#': count=-1; max=0; break;
             default: count--;
         }
-        if(count++>=maxcount) err("Command count overflow");
+        if(count++>=maxcount) err('t');
     }
-    printf("Pointer: %ld\nFinal memory state:\n", p);
+    printf("\n===\nPointer: %ld\nFinal memory state:\n", p);
     for (p=0; p<=max;++p) printf(" %3d", array[p]);
     printf("\n\n");
     length=census['+']+census['-']+census['<']+census['>'];
