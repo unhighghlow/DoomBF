@@ -23,6 +23,40 @@ Replaces the execution environment with a simple CLI debugger that allows you to
 
 Adds a new instruction: `#` (breakpoint)
 
+```
+? - display help
+r - run the program until a breakpoint is reached
+s - step one instruction forward
+a - load an addrmap file
+q - quit
+```
+
+#### Addressmaps
+
+An addressmap can be used to display the values of variables from specific tape locations. An addressmap file line has the following format:
+
+```
+(mode)(addr)[(length)] (name)
+```
+
+Where `length` is optional
+
+Example:
+```
+d0 address
+x1 output
+x2 scrap
+
+s3[e] array
+a3[e] array
+```
+
+The modes are as follows:
+- `x` -- Print in hexadecimal
+- `d` -- Print in decimal
+- `a` -- Print as an array
+- `s` -- Print as strings
+
 ### Asserts
 
 Use the `ASSERTS` option
