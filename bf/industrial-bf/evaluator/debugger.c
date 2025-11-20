@@ -187,6 +187,72 @@ void debugger_init() {
         debugger_cmd();
 }
 
+void show_char(char chr) {
+        if (chr == '"') {
+                printf("\\\"");
+                return;
+        }
+        if (chr == '\\') {
+                printf("\\\\");
+                return;
+        }
+        if (chr >= ' ' && chr <= '~') {
+                printf("%c", chr);
+                return;
+        }
+        printf("\\%o", chr);
+}
+
+void show_string(char tape[], unsigned long addr, unsigned long length, unsigned long dp) {
+        char elipsis = 0;
+        char string_open = 0;
+        char start = 1;
+        char val;
+        unsigned long cur_addr;
+
+#define OPEN_STRING { \
+        if (!string_open) { \
+                if (!start) \
+                        printf(" "); \
+                printf("\""); \
+        } \
+        string_open = 1; \
+}
+
+#define CLOSE_STRING { \
+        if (string_open) { \
+                printf("\""); \
+                if (val) \
+                        printf("!"); \
+        } \
+        string_open = 0; \
+}
+
+#define ELIPSIS { \
+        if (!elipsis) \
+                printf("..."); \
+        elipsis = 1; \
+}
+
+        for (unsigned long i = 0; i < length; i++) {
+                cur_addr = addr + i;
+                if (is_addr_loaded(dp, cur_addr)) {
+                        val = tape[cur_addr%(PAGE_SIZE*4)];
+                        OPEN_STRING
+                        if (val)
+                                show_char(val);
+                        else
+                                CLOSE_STRING
+                        elipsis = 0;
+                } else {
+                        ELIPSIS
+                        val = 0;
+                }
+                start = 0;
+        }
+        CLOSE_STRING
+} 
+
 void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
         if (!active_addrmap.values) return;
 
@@ -238,6 +304,9 @@ void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
                                                 elipsis = 1;
                                         }
                                 }
+                                break;
+                        case MODE_STRING:
+                                show_string(tape, cur->addr, cur->len, dp);
                                 break;
                 }
 

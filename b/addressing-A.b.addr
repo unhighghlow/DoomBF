@@ -3,5 +3,5 @@ d0 address
 x1 output
 x2 scrap
 
-s3[c] array
-a3[c] array
+s3[10f] array
+a3[10f] array
