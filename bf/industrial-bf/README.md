@@ -23,6 +23,7 @@ Replaces the execution environment with a simple CLI debugger that allows you to
 
 Adds a new instruction: `#` (breakpoint)
 
+In the debugger UI, the following commands can be used:
 ```
 ? - display help
 r - run the program until a breakpoint is reached
@@ -33,7 +34,7 @@ q - quit
 
 #### Addressmaps
 
-An addressmap can be used to display the values of variables from specific tape locations. An addressmap file line has the following format:
+An addressmap can be used to display the values of variables from specific tape locations. An addressmap line has the following format:
 
 ```
 (mode)(addr)[(length)] (name)
