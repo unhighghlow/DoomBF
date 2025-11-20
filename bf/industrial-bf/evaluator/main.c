@@ -50,7 +50,9 @@ int main(int argc, char *argv[]) {
 
         strcpy(addrmap_filename, filename);
         strcat(addrmap_filename, ".addr");
+#ifdef DEBUGGER
         load_addrmap(addrmap_filename);
+#endif
 
         evaluate(program, tape);
 }
