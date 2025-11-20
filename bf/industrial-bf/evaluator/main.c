@@ -24,6 +24,7 @@ void evaluate(char *program, CELL *tape);
 
 int main(int argc, char *argv[]) {
         char *filename;
+        char addrmap_filename[65];
 
         if (argc > 2) {
                 printf("usage: %s <program>\n", argv[0]);
@@ -36,6 +37,8 @@ int main(int argc, char *argv[]) {
         
         unsigned long program_length;
         char *program_raw = (char*) read_file(filename, &program_length);
+        if (!program_raw) exit(1);
+
         char *program = optimize(program_raw);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
@@ -44,6 +47,10 @@ int main(int argc, char *argv[]) {
         load_page(tape, PAGE_COUNT);
         load_page(tape, 0);
         load_page(tape, 1);
+
+        strcpy(addrmap_filename, filename);
+        strcat(addrmap_filename, ".addr");
+        load_addrmap(addrmap_filename);
 
         evaluate(program, tape);
 }
@@ -181,23 +188,4 @@ assert_common:
 
 exit:
         return;
-}
-
-char* read_file(char* filename, unsigned long *program_length) {
-        FILE *f = fopen(filename, "rb");
-        if (!f) {
-                printf("cannot open file\n");
-                exit(1);
-        }
-        fseek(f, 0, SEEK_END);
-        unsigned long fsize = ftell(f);
-        fseek(f, 0, SEEK_SET);
-
-        char *string = safe_malloc(fsize + 1);
-        fread(string, fsize, 1, f);
-        fclose(f);
-
-        string[fsize] = 0;
-        *program_length = fsize;
-        return string;
 }

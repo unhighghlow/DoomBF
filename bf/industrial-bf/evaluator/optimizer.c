@@ -112,30 +112,10 @@ char proc_close_loop(char program_in[], unsigned long *ind, struct vector *progr
         return 0;
 }
 
-signed char parse_digit(char digit) {
-        signed char out;
-        if (digit >= '0' && digit <= '9') {
-                out = digit-'0';
-        } else if (digit >= 'a' && digit <= 'f'){
-                out = digit-'a'+0xa;
-        } else {
-                out = -1;
-        }
-        return out;
-}
-
 char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         signed char digit;
-        unsigned long val = 0;
-        while (1) {
-                (*ind)++;
-                digit = parse_digit(program_in[*ind]);
-                if (digit == -1)
-                        break;
-                val <<= 4;
-                val += digit;
-        }
+        unsigned long val = parse_number(program_in, ind);
         if (val&0xff00000000000000) {
                 printf("error: `%c` assert value overflow: %lx\n", inst, val);
         }

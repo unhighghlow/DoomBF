@@ -38,7 +38,7 @@ Go to address
 Set the address
 6 ++++++++ !6
 
-@ BEGIN ALGORITHM
+@# BEGIN ALGORITHM
 
 Copy address to output through scrap
 

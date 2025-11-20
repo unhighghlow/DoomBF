@@ -5,22 +5,150 @@
 
 char debugger_stepper = 0;
 
+enum addrmap_mode {
+        MODE_HEX,
+        MODE_DEC,
+        MODE_STRING,
+        MODE_BYTES
+};
+
+struct addrmap_value {
+        char name[65];
+        enum addrmap_mode mode;
+        unsigned long len;
+        unsigned long addr;
+};
+
+struct addrmap {
+        unsigned long count;
+        struct addrmap_value *values;
+};
+
+struct addrmap active_addrmap = {0};
+
 void debugger_help() {
         printf(
                 "? - display help\n"
                 "r - run the program until a breakpoint is reached\n"
                 "s - step one instruction forward\n"
+                "a - load an addrmap file\n"
                 "q - quit\n"
         );
 }
 
+void load_addrmap_line(char line[], struct addrmap_value *out) {
+        enum addrmap_mode mode;
+        unsigned long addr;
+        unsigned long len = 1;
+
+        switch (line[0]) {
+                case 'x':
+                        mode = MODE_HEX;
+                        break;
+                case 'd':
+                        mode = MODE_DEC;
+                        break;
+                case 's':
+                        mode = MODE_STRING;
+                        break;
+                case 'a':
+                        mode = MODE_BYTES;
+                        break;
+                default:
+                        printf("invalid mode: %c", line[0]);
+                        return;
+        }
+
+        unsigned long ind = 1;
+        addr = parse_number(line, &ind);
+
+        if (line[ind] == '[') {
+                ind++;
+                len = parse_number(line, &ind);
+                ind++;
+        }
+        ind++;
+
+        strcpy(out->name, &line[ind]);
+        out->mode = mode;
+        out->len = len;
+        out->addr = addr;
+
+        printf("@%lx M: %x L: %lx N: %s\n", addr, out->mode, out->len, out->name);
+}
+
+unsigned long count_nonempty_lines(char *addrmap, unsigned long length) {
+        char newline = 1;
+        unsigned long lines = 0;
+        for (unsigned long ind = 0; ind < length; ind++) {
+                if (addrmap[ind] == '\n') {
+                        if (!newline) {
+                                lines++;
+                        }
+                        newline = 1;
+                } else {
+                        newline = 0;
+                }
+        }
+        if (!newline)
+                lines++;
+        return lines;
+}
+
+void load_addrmap(char *filename) {
+        printf("loading addrmap: %s. ", filename);
+        char line[65] = {0};
+        unsigned long ind;
+        unsigned long lineind = 0;
+        unsigned long length;
+        unsigned long lines;
+
+        char *addrmap = read_file(filename, &length);
+        if (!addrmap) return;
+
+        lines = count_nonempty_lines(addrmap, length);
+        printf("%ld lines\n", lines);
+
+        if (active_addrmap.values) {
+                free(active_addrmap.values);
+                printf("unloaded old attrmap\n");
+        }
+        active_addrmap.count = 0;
+        active_addrmap.values = malloc(sizeof (struct addrmap_value) * lines);
+
+        for (ind = 0; ind < length; ind++) {
+                if (addrmap[ind] == '\n') {
+load_line:
+                        line[lineind] = 0;
+                        if (line[0]) {
+                                load_addrmap_line(
+                                        line,
+                                        &active_addrmap.values[
+                                            active_addrmap.count
+                                        ]
+                                );
+                                active_addrmap.count++;
+                        }
+                        lineind = 0;
+                        line[0] = 0;
+                } else {
+                        line[lineind] = addrmap[ind];
+                        lineind++;
+                }
+        }
+        if (line[0])
+                goto load_line;
+}
+
 void debugger_cmd() {
-        char buf[3];
+        char buf[4];
+        char filename[17];
+        unsigned long len;
 
         while (1) {
                 printf("$ ");
 skip_prompt:
-                fgets(buf, 2, stdin);
+                fgets(buf, 3, stdin);
 
                 switch (buf[0]) {
                         case '\n':
@@ -35,6 +163,15 @@ skip_prompt:
                         case 's':
                                 debugger_stepper = 1;
                                 goto continue_execution;
+                        case 'a':
+                                printf("addrmap: ");
+                                fgets(filename, 16, stdin);
+                                len = strlen(filename);
+                                if (filename[len-1] == 0xa) {
+                                        filename[len-1] = 0;
+                                }
+                                load_addrmap(filename);
+                                break;
                         case 'q':
                                 exit(0);
                         default:
@@ -48,6 +185,64 @@ continue_execution:
 
 void debugger_init() {
         debugger_cmd();
+}
+
+void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
+        if (!active_addrmap.values) return;
+
+        struct addrmap_value *cur;
+        CELL val;
+
+        printf("variables:\n");
+        for (int ind = 0; ind < active_addrmap.count; ind++) {
+                cur = &active_addrmap.values[ind];
+                printf("%s: ", cur->name);
+
+#define ELIPSIS_IF_NOT_LOADED \
+                if (!is_addr_loaded(dp, cur->addr)) { \
+                        printf("...\n"); \
+                        continue; \
+                }
+
+                val = tape[cur->addr%(PAGE_SIZE*4)];
+
+                switch(cur->mode) {
+                        case MODE_HEX:
+                                ELIPSIS_IF_NOT_LOADED
+                                printf("0x%x", val);
+                                break;
+                        case MODE_DEC:
+                                ELIPSIS_IF_NOT_LOADED
+                                printf("%x", val);
+                                break;
+                        case MODE_BYTES:
+                                char comma = 0;
+                                char elipsis = 0;
+                                unsigned long addr;
+                                for (int i = 0; i < cur->len; i++) {
+#define PRINT_COMMA \
+                                        if (comma) \
+                                                printf(", "); \
+                                        comma = 1;
+
+                                        addr = cur->addr+i;
+                                        if (is_addr_loaded(dp, addr)) {
+                                                PRINT_COMMA
+                                                printf("0x%x", tape[addr%(PAGE_SIZE*4)]);
+                                                elipsis = 0;
+                                        } else {
+                                                if (!elipsis) {
+                                                        PRINT_COMMA
+                                                        printf("...");
+                                                }
+                                                elipsis = 1;
+                                        }
+                                }
+                                break;
+                }
+
+                printf("\n");
+        }
 }
 
 unsigned char debugger_print_instruction(char inst[]) {
@@ -102,11 +297,14 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
                 printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
                 printf(" ");
         }
+
         printf("\n");
         for (int i = 0; i < (TYPOGRAPHIC_CELL_WIDTH+1) * 4 - 2; i++) {
                 printf(" ");
         }
         printf("^\n");
+
+        debugger_print_addrmap_vals(tape, dp);
 
         debugger_cmd();
 }

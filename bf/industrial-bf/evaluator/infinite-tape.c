@@ -40,7 +40,7 @@ void store_page(CELL tape[], unsigned long page_uid) {
         CELL *target = &tape[PAGE_SIZE*page_n];
 
         char filename_buf[17];
-	char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
+        char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
         sprintf(filename_buf, "%016lx", page_uid);
 #ifdef DEBUG
         printf("storing page: 0x%s... ", filename);
@@ -67,7 +67,7 @@ void load_page(CELL tape[], unsigned long page_uid) {
         CELL *target = &tape[PAGE_SIZE*page_n];
 
         char filename_buf[17];
-	char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
+        char *filename = filename_buf + (PAGE_SIZE_POWER / 4);
         sprintf(filename_buf, "%016lx", page_uid);
 #ifdef DEBUG
         printf("loading page: 0x%s... ", filename);
@@ -90,4 +90,15 @@ void load_page(CELL tape[], unsigned long page_uid) {
         printf("ok\n");
 #endif
         fclose(f);
+}
+
+char is_addr_loaded(unsigned long dp, unsigned long addr) {
+        unsigned long cur_page = get_page_uid(dp);
+        unsigned long target_page = get_page_uid(addr);
+
+        return (
+                target_page == (cur_page - 1)
+             || target_page == cur_page
+             || target_page == (cur_page + 1)
+        );
 }
