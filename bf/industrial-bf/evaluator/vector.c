@@ -42,8 +42,8 @@ void vector_drop(struct vector *vec) {
 }
 
 void *vector_unwrap(struct vector *vec) {
-        safe_realloc(vec->ptr, vec->length);
-        return vec->ptr;
+        char *p = safe_realloc(vec->ptr, vec->length);
+        return p;
 }
 
 void vector_push_long(struct vector *out, unsigned long item) {
