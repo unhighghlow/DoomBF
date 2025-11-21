@@ -10,12 +10,14 @@
 
 #include "util.c"
 #include "vector.c"
-#include "optimizer.c"
 #include "infinite-tape.c"
 
 #ifdef DEBUGGER
+#include "sourcemaps.c"
 #include "debugger.c"
 #endif
+
+#include "optimizer.c"
 
 #include "config.h"
 
@@ -39,6 +41,9 @@ int main(int argc, char *argv[]) {
         char *program_raw = (char*) read_file(filename, &program_length);
         if (!program_raw) exit(1);
 
+#ifdef DEBUGGER
+        sourcemap_init();
+#endif
         char *program = optimize(program_raw);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));

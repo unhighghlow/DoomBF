@@ -271,28 +271,67 @@ void show_string(CELL tape[], unsigned long addr, unsigned long length, unsigned
 } 
 
 void show_bytes(CELL tape[], unsigned long addr, unsigned long length, unsigned long dp) {
-	char comma = 0;
-	char elipsis = 0;
-	unsigned long addr2;
-	for (int i = 0; i < length; i++) {
+        char comma = 0;
+        char elipsis = 0;
+        unsigned long addr2;
+        for (int i = 0; i < length; i++) {
 #define PRINT_COMMA \
-		if (comma) \
-			printf(", "); \
-		comma = 1;
+                if (comma) \
+                        printf(", "); \
+                comma = 1;
 
-		addr2 = addr+i;
-		if (is_addr_loaded(dp, addr2)) {
-			PRINT_COMMA
-			printf("0x%x", tape[addr2%(PAGE_SIZE*4)]);
-			elipsis = 0;
-		} else {
-			if (!elipsis) {
-				PRINT_COMMA
-				printf("...");
-			}
-			elipsis = 1;
-		}
-	}
+                addr2 = addr+i;
+                if (is_addr_loaded(dp, addr2)) {
+                        PRINT_COMMA
+                        printf("0x%x", tape[addr2%(PAGE_SIZE*4)]);
+                        elipsis = 0;
+                } else {
+                        if (!elipsis) {
+                                PRINT_COMMA
+                                printf("...");
+                        }
+                        elipsis = 1;
+                }
+        }
+}
+
+struct sourcemap_entry *read_sm_entry(unsigned long ind) {
+        return (
+            (struct sourcemap_entry*)
+            ntohll(
+                *(unsigned long*)
+                &sourcemap.entries.ptr[(ind)*8]
+            )
+        );
+}
+
+unsigned long get_current_sm_ind(unsigned long pc) {
+        unsigned long count = sourcemap.entries.length/8;
+        unsigned long ind = 0;
+        while (1) {
+                ind++;
+                if (ind >= count)
+                        break;
+                if ((read_sm_entry(ind)->ind) > pc)
+                        break;
+        }
+        ind--;
+        return ind;
+}
+
+void debugger_print_source(unsigned long pc) {
+        if (!sourcemap.entries.length) return;
+
+        unsigned long count = sourcemap.entries.length/8;
+        unsigned long start;
+        unsigned long ind = get_current_sm_ind(pc);
+        start = ind;
+
+        printf("source:\n");
+        printf("> %s\n", read_sm_entry(ind)->text);
+        for (ind++; ind < count && ind < start+4; ind++) {
+                printf("  %s\n", read_sm_entry(ind)->text);
+        }
 }
 
 void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
@@ -424,6 +463,7 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
         printf("^\n");
 
         debugger_print_addrmap_vals(tape, dp);
+        debugger_print_source(pc);
 
         debugger_cmd();
 }
