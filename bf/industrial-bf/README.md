@@ -29,6 +29,7 @@ In the debugger UI, the following commands can be used:
 r - run the program until a breakpoint is reached
 s - step one instruction forward
 x - run until the current loop ends
+n - run until the next sourcemap line
 a - load an addrmap file
 q - quit
 ```

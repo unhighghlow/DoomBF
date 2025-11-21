@@ -7,12 +7,14 @@ enum dbg_state {
         DBG_STEP,
         DBG_RUN,
         DBG_EXIT_SEARCH,
-        DBG_EXIT_RUN
+        DBG_EXIT_RUN,
+        DBG_SM_NEXT
 };
 
 enum dbg_state debugger_state = DBG_STEP;
 unsigned long exit_search_depth;
 unsigned long exit_target;
+unsigned long sm_next_target;
 
 enum addrmap_mode {
         MODE_HEX,
@@ -41,6 +43,7 @@ void debugger_help() {
                 "r - run the program until a breakpoint is reached\n"
                 "s - step one instruction forward\n"
                 "x - run until the current loop ends\n"
+                "n - run until the next sourcemap line\n"
                 "a - load an addrmap file\n"
                 "q - quit\n"
         );
@@ -150,7 +153,31 @@ load_line:
                 goto load_line;
 }
 
-void debugger_cmd() {
+struct sourcemap_entry *read_sm_entry(unsigned long ind) {
+        return (
+            (struct sourcemap_entry*)
+            ntohll(
+                *(unsigned long*)
+                &sourcemap.entries.ptr[(ind)*8]
+            )
+        );
+}
+
+unsigned long get_current_sm_ind(unsigned long pc) {
+        unsigned long count = sourcemap.entries.length/8;
+        unsigned long ind = 0;
+        while (1) {
+                ind++;
+                if (ind >= count)
+                        break;
+                if ((read_sm_entry(ind)->ind) > pc)
+                        break;
+        }
+        ind--;
+        return ind;
+}
+
+void debugger_cmd(unsigned long pc) {
         char buf[4];
         char filename[17];
         unsigned long len;
@@ -178,6 +205,10 @@ skip_prompt:
                                 exit_target = 0;
                                 debugger_state = DBG_EXIT_SEARCH;
                                 goto continue_execution;
+                        case 'n':
+                                sm_next_target = get_current_sm_ind(pc)+1;
+                                debugger_state = DBG_SM_NEXT;
+                                goto continue_execution;
                         case 'a':
                                 printf("addrmap: ");
                                 fgets(filename, 16, stdin);
@@ -199,7 +230,7 @@ continue_execution:
 }
 
 void debugger_init() {
-        debugger_cmd();
+        debugger_cmd(0);
 }
 
 void show_char(char chr) {
@@ -293,30 +324,6 @@ void show_bytes(CELL tape[], unsigned long addr, unsigned long length, unsigned 
                         elipsis = 1;
                 }
         }
-}
-
-struct sourcemap_entry *read_sm_entry(unsigned long ind) {
-        return (
-            (struct sourcemap_entry*)
-            ntohll(
-                *(unsigned long*)
-                &sourcemap.entries.ptr[(ind)*8]
-            )
-        );
-}
-
-unsigned long get_current_sm_ind(unsigned long pc) {
-        unsigned long count = sourcemap.entries.length/8;
-        unsigned long ind = 0;
-        while (1) {
-                ind++;
-                if (ind >= count)
-                        break;
-                if ((read_sm_entry(ind)->ind) > pc)
-                        break;
-        }
-        ind--;
-        return ind;
 }
 
 void debugger_print_source(unsigned long pc) {
@@ -431,6 +438,10 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
                                 exit_search_depth--;
                         }
                         return;
+                case DBG_SM_NEXT:
+                        if (get_current_sm_ind(pc) >= sm_next_target)
+				break;
+			return;
                 case DBG_EXIT_RUN:
                         if (pc == exit_target)
                                 break;
@@ -465,5 +476,5 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
         debugger_print_addrmap_vals(tape, dp);
         debugger_print_source(pc);
 
-        debugger_cmd();
+        debugger_cmd(pc);
 }
