@@ -40,8 +40,8 @@ void debugger_help() {
                 "? - display help\n"
                 "r - run the program until a breakpoint is reached\n"
                 "s - step one instruction forward\n"
-                "a - load an addrmap file\n"
                 "x - run until the current loop ends\n"
+                "a - load an addrmap file\n"
                 "q - quit\n"
         );
 }

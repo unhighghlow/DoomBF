@@ -28,6 +28,7 @@ In the debugger UI, the following commands can be used:
 ? - display help
 r - run the program until a breakpoint is reached
 s - step one instruction forward
+x - run until the current loop ends
 a - load an addrmap file
 q - quit
 ```
