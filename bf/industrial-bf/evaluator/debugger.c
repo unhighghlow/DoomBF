@@ -3,7 +3,16 @@
 
 #define TYPOGRAPHIC_CELL_WIDTH ((sizeof (CELL)) * 2)
 
-char debugger_stepper = 0;
+enum dbg_state {
+        DBG_STEP,
+        DBG_RUN,
+        DBG_EXIT_SEARCH,
+        DBG_EXIT_RUN
+};
+
+enum dbg_state debugger_state = DBG_STEP;
+unsigned long exit_search_depth;
+unsigned long exit_target;
 
 enum addrmap_mode {
         MODE_HEX,
@@ -32,6 +41,7 @@ void debugger_help() {
                 "r - run the program until a breakpoint is reached\n"
                 "s - step one instruction forward\n"
                 "a - load an addrmap file\n"
+                "x - run until the current loop ends\n"
                 "q - quit\n"
         );
 }
@@ -158,10 +168,15 @@ skip_prompt:
                                 debugger_help();
                                 break;
                         case 'r':
-                                debugger_stepper = 0;
+                                debugger_state = DBG_RUN;
                                 goto continue_execution;
                         case 's':
-                                debugger_stepper = 1;
+                                debugger_state = DBG_STEP;
+                                goto continue_execution;
+                        case 'x':
+                                exit_search_depth = 0;
+                                exit_target = 0;
+                                debugger_state = DBG_EXIT_SEARCH;
                                 goto continue_execution;
                         case 'a':
                                 printf("addrmap: ");
@@ -348,7 +363,32 @@ unsigned char debugger_print_instruction(char inst[]) {
 }
 
 void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, unsigned long pc) {
-        if (reason == BREAK_REASON_INSTRUCTION && !debugger_stepper) return;
+        switch (debugger_state) {
+                case DBG_RUN:
+                        if (reason == BREAK_REASON_INSTRUCTION)
+                                return;
+                        break;
+                case DBG_STEP:
+                        break;
+                case DBG_EXIT_SEARCH:
+                        if (pc < exit_target)
+                                return;
+                        if (program[pc] == '[') {
+                                exit_search_depth++;
+                        }
+                        if (program[pc] == ']') {
+                                exit_target = pc+8;
+                                if (!exit_search_depth) {
+                                        debugger_state = DBG_EXIT_RUN;
+                                }
+                                exit_search_depth--;
+                        }
+                        return;
+                case DBG_EXIT_RUN:
+                        if (pc == exit_target)
+                                break;
+                        return;
+        }
 
         printf("program: 0x%lx\n", pc);
         unsigned long offset = 0;
