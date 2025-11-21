@@ -60,6 +60,28 @@ The modes are as follows:
 - `a` -- Print as an array
 - `s` -- Print as strings
 
+#### Sourcemaps
+
+Every (non-whitespace) comment is assumed to annotate the code after it, and before the next comment (or EOF). For example in the following program:
+```
++
+a[+]
++[<]b
++>+
+
+[-]
+```
+
+The comments are as follows:
+```
+a: [+] +[<]
+b: +>+ [-]
+```
+
+When executing, the comments are displayed and can be used as breakpoints with the `n` command.
+
+Note: when reading comments, any continuous sequence of whitespace characters is replaced with a space, and whitespace at the beginning of the comment is removed
+
 ### Asserts
 
 Use the `ASSERTS` option
