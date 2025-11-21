@@ -218,7 +218,7 @@ void show_char(char chr) {
         printf("\\%o", chr);
 }
 
-void show_string(char tape[], unsigned long addr, unsigned long length, unsigned long dp) {
+void show_string(CELL tape[], unsigned long addr, unsigned long length, unsigned long dp) {
         char elipsis = 0;
         char string_open = 0;
         char start = 1;
@@ -270,6 +270,31 @@ void show_string(char tape[], unsigned long addr, unsigned long length, unsigned
         CLOSE_STRING
 } 
 
+void show_bytes(CELL tape[], unsigned long addr, unsigned long length, unsigned long dp) {
+	char comma = 0;
+	char elipsis = 0;
+	unsigned long addr2;
+	for (int i = 0; i < length; i++) {
+#define PRINT_COMMA \
+		if (comma) \
+			printf(", "); \
+		comma = 1;
+
+		addr2 = addr+i;
+		if (is_addr_loaded(dp, addr2)) {
+			PRINT_COMMA
+			printf("0x%x", tape[addr2%(PAGE_SIZE*4)]);
+			elipsis = 0;
+		} else {
+			if (!elipsis) {
+				PRINT_COMMA
+				printf("...");
+			}
+			elipsis = 1;
+		}
+	}
+}
+
 void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
         if (!active_addrmap.values) return;
 
@@ -303,28 +328,7 @@ void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
                                 printf("%x", val);
                                 break;
                         case MODE_BYTES:
-                                char comma = 0;
-                                char elipsis = 0;
-                                unsigned long addr;
-                                for (int i = 0; i < cur->len; i++) {
-#define PRINT_COMMA \
-                                        if (comma) \
-                                                printf(", "); \
-                                        comma = 1;
-
-                                        addr = cur->addr+i;
-                                        if (is_addr_loaded(dp, addr)) {
-                                                PRINT_COMMA
-                                                printf("0x%x", tape[addr%(PAGE_SIZE*4)]);
-                                                elipsis = 0;
-                                        } else {
-                                                if (!elipsis) {
-                                                        PRINT_COMMA
-                                                        printf("...");
-                                                }
-                                                elipsis = 1;
-                                        }
-                                }
+                                show_bytes(tape, cur->addr, cur->len, dp);
                                 break;
                         case MODE_STRING:
                                 show_string(tape, cur->addr, cur->len, dp);
