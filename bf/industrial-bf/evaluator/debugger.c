@@ -334,7 +334,7 @@ void debugger_print_source(unsigned long pc) {
         unsigned long ind = get_current_sm_ind(pc);
         start = ind;
 
-        printf("source:\n");
+        printf("SOURCE:\n");
         printf("> %s\n", read_sm_entry(ind)->text);
         for (ind++; ind < count && ind < start+4; ind++) {
                 printf("  %s\n", read_sm_entry(ind)->text);
@@ -347,7 +347,7 @@ void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
         struct addrmap_value *cur;
         CELL val;
 
-        printf("variables:\n");
+        printf("VARIABLES:\n");
         for (int ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if (dp >= cur->addr && dp < cur->addr+cur->len)
@@ -448,7 +448,7 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
                         return;
         }
 
-        printf("program: 0x%lx\n", pc);
+        printf("PROGRAM: 0x%lx\n", pc);
         unsigned long offset = 0;
         for (int i = 0; i < 5; i++) {
                 if (!i) {
@@ -461,7 +461,7 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
                 if (!program[pc+offset]) break;
         }
 
-        printf("tape: 0x%lx\n", dp);
+        printf("TAPE: 0x%lx\n", dp);
         for (int offset = -3; offset < 4; offset++) {
                 printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
                 printf(" ");
