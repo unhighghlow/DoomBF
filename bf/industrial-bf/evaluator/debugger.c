@@ -279,6 +279,10 @@ void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
         printf("variables:\n");
         for (int ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
+                if (dp >= cur->addr && dp < cur->addr+cur->len)
+                        printf(">");
+                else
+                        printf(" ");
                 printf("%s: ", cur->name);
 
 #define ELIPSIS_IF_NOT_LOADED \
