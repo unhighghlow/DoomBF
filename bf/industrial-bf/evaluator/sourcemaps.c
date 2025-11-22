@@ -20,6 +20,7 @@ void sourcemap_end(unsigned long ind) {
         bt = &sourcemap.building_text;
 
         if (!bt->length) return;
+        vector_push(bt, '\0');
 
         struct sourcemap_entry *e;
         e = safe_malloc(sizeof (struct sourcemap_entry));
