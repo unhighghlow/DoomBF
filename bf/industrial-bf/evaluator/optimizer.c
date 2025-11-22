@@ -102,6 +102,7 @@ char proc_close_loop(char program_in[], unsigned long *ind, struct vector *progr
 char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         signed char digit;
+        (*ind)++;
         unsigned long val = parse_number(program_in, ind);
         if (val&0xff00000000000000) {
                 printf("error: `%c` assert value overflow: %lx\n", inst, val);
