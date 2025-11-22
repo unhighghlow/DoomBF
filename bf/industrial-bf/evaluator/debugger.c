@@ -440,8 +440,8 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
                         return;
                 case DBG_SM_NEXT:
                         if (get_current_sm_ind(pc) >= sm_next_target)
-				break;
-			return;
+                                break;
+                        return;
                 case DBG_EXIT_RUN:
                         if (pc == exit_target)
                                 break;
