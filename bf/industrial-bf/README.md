@@ -62,20 +62,36 @@ The modes are as follows:
 
 #### Sourcemaps
 
-Every (non-whitespace) comment is assumed to annotate the code after it, and before the next comment (or EOF). For example in the following program:
+Every (non-whitespace) comment is assumed to annotate some code (or EOF). For example in the following program:
 ```
-+
-a[+]
-+[<]b
-+>+
-
-[-]
+a
++ b
+@
+- c
+-
+d >+ e
+<
+x +
+y +
+-
+z <
+end
 ```
 
 The comments are as follows:
 ```
-a: [+] +[<]
-b: +>+ [-]
+[a
++ b
+@]
+[- c
+-]
+[d >+] [e
+<]
+[x +]
+[y +
+-]
+[z <]
+[end]
 ```
 
 When executing, the comments are displayed and can be used as breakpoints with the `n` command.
