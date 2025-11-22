@@ -1,4 +1,7 @@
 struct sourcemap {
+        char comment_line;
+        unsigned long er_ind;
+        unsigned long line_ind;
         struct vector building_text;
         struct vector entries;
 };
@@ -13,6 +16,9 @@ struct sourcemap sourcemap;
 void sourcemap_init() {
         vector_init(&sourcemap.building_text, 0);
         vector_init(&sourcemap.entries, 0);
+        sourcemap.line_ind = -1;
+        sourcemap.er_ind = -1;
+        sourcemap.comment_line = 0;
 }
 
 void sourcemap_end(unsigned long ind) {
@@ -27,9 +33,13 @@ void sourcemap_end(unsigned long ind) {
 
         e->ind = ind;
         e->text = vector_unwrap(bt);
-        vector_init(bt, 0);
 
         vector_push_long(&sourcemap.entries, (unsigned long)e);
+
+        sourcemap.line_ind = -1;
+        sourcemap.er_ind = -1;
+        sourcemap.comment_line = 0;
+        vector_init(bt, 0);
 }
 
 void sourcemap_process(char chr, unsigned long ind) {
@@ -43,8 +53,26 @@ void sourcemap_process(char chr, unsigned long ind) {
                 ))
                         vector_push(bt, ' ');
         } else if (is_comment(chr)) {
+                if (sourcemap.er_ind != -1) {
+                        sourcemap_end(sourcemap.er_ind);
+                        sourcemap.er_ind = -1;
+                }
+                sourcemap.comment_line = 1;
                 vector_push(bt, chr);
         } else {
-                sourcemap_end(ind);
+                if (sourcemap.line_ind == -1)
+                        sourcemap.line_ind = ind;
+                if (sourcemap.comment_line) {
+                        if (sourcemap.er_ind == -1)
+                                sourcemap.er_ind = ind;
+                }
+        }
+
+        if (chr == '\n' && sourcemap.line_ind != -1)
+                sourcemap_end(sourcemap.line_ind);
+
+        if (chr == '\n') {
+                sourcemap.line_ind = -1;
+                sourcemap.comment_line = 0;
         }
 }

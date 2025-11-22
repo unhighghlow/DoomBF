@@ -34,7 +34,7 @@ char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program
         unsigned int count = 1;
 
 #ifdef DEBUGGER
-#define is_ignored is_whitespace
+#define is_ignored(a) (is_whitespace(a) && a != '\n')
 #else
 #define is_ignored is_comment
 #endif
