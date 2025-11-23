@@ -1,5 +1,9 @@
 #include "config.h"
+#ifndef _WIN32
 #include <arpa/inet.h>
+#else
+#include "win_byteorder.c"
+#endif
 #include <errno.h>
 
 long round_up_to_power_of_two(long n) {
