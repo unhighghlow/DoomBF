@@ -10,79 +10,56 @@
 
 #include "util.c"
 #include "vector.c"
-#include "optimizer.c"
 #include "infinite-tape.c"
 
 #ifdef DEBUGGER
+#include "sourcemaps.c"
 #include "debugger.c"
 #endif
 
-#ifdef ASSERTS
-#include "asserts.c"
-#endif
+#include "optimizer.c"
 
 #include "config.h"
 
-char* read_file(char* filename, unsigned long *program_length);
-int find_loops(short *program, unsigned long *loops);
-void evaluate(short *program, CELL *tape, unsigned long *loops);
+char* read_file(char *filename, unsigned long *program_length);
+void evaluate(char *program, CELL *tape);
 
 int main(int argc, char *argv[]) {
-	char *filename;
+        char *filename;
+        char addrmap_filename[65];
 
-	if (argc > 2) {
-		printf("usage: %s <program>\n", argv[0]);
-		return 1;
-	} else if (argc == 2) {
-		filename = argv[1];
-	} else {
-		filename = "test.b";
-	}
-	
-	unsigned long program_length;
-	char *program_raw = (char*) read_file(filename, &program_length);
-        short *program = optimize(program_raw);
-
-	unsigned long *loops = safe_malloc(program_length * (sizeof (unsigned long)));
-	if (find_loops(program, loops)) {
+        if (argc > 2) {
+                printf("usage: %s <program>\n", argv[0]);
                 return 1;
+        } else if (argc == 2) {
+                filename = argv[1];
+        } else {
+                filename = "test.b";
         }
+        
+        unsigned long program_length;
+        char *program_raw = (char*) read_file(filename, &program_length);
+        if (!program_raw) exit(1);
 
-	CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
-	memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
+#ifdef DEBUGGER
+        sourcemap_init();
+#endif
+        char *program = optimize(program_raw);
 
-	load_page(tape, -1);
-	load_page(tape, 0);
-	load_page(tape, 1);
+        CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
+        memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
-        evaluate(program, tape, loops);
-}
+        load_page(tape, PAGE_COUNT);
+        load_page(tape, 0);
+        load_page(tape, 1);
 
-int find_loops(short program[], unsigned long loops[]) {
-	unsigned long ind = -1;
-	char sp = 0;
-	unsigned long stack[256];
-	char inst;
+        strcpy(addrmap_filename, filename);
+        strcat(addrmap_filename, ".addr");
+#ifdef DEBUGGER
+        load_addrmap(addrmap_filename);
+#endif
 
-	while ((inst = program[++ind])) {
-		if (inst == '[') {
-			stack[sp++] = ind;
-		}
-		else if (inst == ']') {
-                        if (sp == 0) {
-                                puts("loop stack underflow\n");
-                                return 1;
-                        }
-			sp--;
-			loops[ind] = stack[sp];
-			loops[stack[sp]] = ind;
-		}
-	}
-        if (sp > 0) {
-                puts("loop stack overflow\n");
-                return 1;
-        }
-        return 0;
+        evaluate(program, tape);
 }
 
 union command {
@@ -90,145 +67,132 @@ union command {
                 char cmd;
                 char arg;
         } d;
-        short raw;
+        unsigned long raw;
 };
 
 const void* jumptable[0x100];
 
-void evaluate(short program[], CELL tape[], unsigned long loops[]) {
+void evaluate(char program[], CELL tape[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
-	register unsigned long pc = -1;
-	register unsigned long dp = 0;
-	register union command inst;
-	register char last_page = 0;
+        register unsigned long pc = 0;
+        register unsigned long dp = 0;
+        register union command inst;
+        register char last_page = 0;
 #ifdef ASSERTS
-	char *assert_name;
-	unsigned long assert_expected;
-	unsigned long assert_got;
+        char *assert_name;
+        unsigned long assert_expected;
+        unsigned long assert_got;
 #endif
 
-	for (int i = 0; i < 0x100; i++) {
-		jumptable[i] = &&ignore;
-	}
-
-	jumptable[0] = &&exit;
-	jumptable['+'] = &&plus;
-	jumptable['-'] = &&minus;
-	jumptable['>'] = &&right;
-	jumptable['<'] = &&left;
-	jumptable['.'] = &&output;
-	jumptable['['] = &&loopstart;
-	jumptable[']'] = &&loopend;
+        jumptable[0] = &&exit;
+        jumptable['+'] = &&plus;
+        jumptable['-'] = &&minus;
+        jumptable['>'] = &&right;
+        jumptable['<'] = &&left;
+        jumptable['.'] = &&output;
+        jumptable['['] = &&loopstart;
+        jumptable[']'] = &&loopend;
 #ifdef DEBUGGER
-	jumptable['#'] = &&breakinst;
+        jumptable['#'] = &&breakinst;
 #endif
 #ifdef ASSERTS
-	jumptable['@'] = &&assert_location;
-	jumptable['!'] = &&assert_value;
+        jumptable['@'] = &&assert_location;
+        jumptable['!'] = &&assert_value;
 #endif
 
 #ifdef DEBUGGER
 
 #define NEXT \
-	inst.raw = program[++pc]; \
+        inst.raw = *(unsigned long*)(&program[pc]); \
         if (inst.d.cmd != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
-	goto *(jumptable[inst.d.cmd]);
+        goto *(jumptable[inst.d.cmd]);
 
 #else
 
 #define NEXT \
-	inst.raw = program[++pc]; \
-	goto *(jumptable[inst.d.cmd]);
+        inst.raw = *(unsigned long*)(&program[pc]); \
+        goto *(jumptable[inst.d.cmd]);
 
 #endif
 
-ignore:
-	NEXT
+        NEXT
 
 plus:
-	tape[dp%HOT_TAPE]+=(short)inst.d.arg + 1;
-	NEXT
+        tape[dp%HOT_TAPE]+=(unsigned char)inst.d.arg + 1;
+        pc+=2;
+        NEXT
 
 minus:
-	tape[dp%HOT_TAPE]-=(short)inst.d.arg + 1;
-	NEXT
+        tape[dp%HOT_TAPE]-=(unsigned char)inst.d.arg + 1;
+        pc+=2;
+        NEXT
 
 
 right:
-	dp+=((unsigned long)inst.d.arg) + 1;
-	CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
-	NEXT
+        dp+=((unsigned char)inst.d.arg) + 1;
+        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        pc+=2;
+        NEXT
 
 left:
-	dp-=(short)inst.d.arg + 1;
-	CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
-	NEXT
+        dp-=((unsigned char)inst.d.arg) + 1;
+        CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
+        pc+=2;
+        NEXT
 
 output:
-	putchar(tape[dp%HOT_TAPE]);
-	NEXT
+        putchar(tape[dp%HOT_TAPE]);
+        pc+=1;
+        NEXT
 
 loopstart:
-	if (!tape[dp%HOT_TAPE])
-		pc=loops[pc];
-	NEXT
+        #define endind ntohll(inst.raw)&0x00ffffffffffffff
+        if (!tape[dp%HOT_TAPE])
+                pc=endind;
+        pc+=8;
+        NEXT
 
 loopend:
-	if (tape[dp%HOT_TAPE])
-		pc=loops[pc];
-	NEXT
+        #define begind ntohll(inst.raw)&0x00ffffffffffffff
+        if (tape[dp%HOT_TAPE])
+                pc=begind;
+        pc+=8;
+        NEXT
 
 #ifdef DEBUGGER
 breakinst:
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
+        pc+=1;
         NEXT
 #endif
 
 
 #ifdef ASSERTS
 assert_location:
-	assert_name = "location";
-	assert_got = dp;
-	goto assert_common;
+        assert_name = "location";
+        assert_got = dp;
+        goto assert_common;
 
 assert_value:
-	assert_name = "value";
-	assert_got = tape[dp];
-	goto assert_common;
+        assert_name = "value";
+        assert_got = tape[dp%HOT_TAPE];
+        /* fallthrough */
 
 assert_common:
-	ASSERT_READ_EXPECTED(assert_expected, pc, program)
-	if (assert_expected != assert_got) {
-		printf("assertion failed: %s\n", assert_name);
-		printf("expected: 0x%lx\n", assert_expected);
-		printf("got: 0x%lx\n", assert_got);
-		exit(1);
-	}
-	NEXT
+        assert_expected = ntohll(inst.raw)&0x00ffffffffffffff;
+        if (assert_expected != assert_got) {
+                printf("assertion failed: %s\n", assert_name);
+                printf("expected: 0x%lx\n", assert_expected);
+                printf("got: 0x%lx\n", assert_got);
+                exit(1);
+        }
+        pc+=8;
+        NEXT
 #endif
 
 exit:
-	return;
-}
-
-char* read_file(char* filename, unsigned long *program_length) {
-	FILE *f = fopen(filename, "rb");
-        if (!f) {
-                printf("cannot open file\n");
-		exit(1);
-        }
-	fseek(f, 0, SEEK_END);
-	unsigned long fsize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	char *string = safe_malloc(fsize + 1);
-	fread(string, fsize, 1, f);
-	fclose(f);
-
-	string[fsize] = 0;
-	*program_length = fsize;
-	return string;
+        return;
 }
