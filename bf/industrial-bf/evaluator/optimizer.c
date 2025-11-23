@@ -27,31 +27,18 @@ struct loop_data {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-char is_comment(char inst) {
-        return !(
-                inst == '+'
-             || inst == '-'
-             || inst == '<'
-             || inst == '>'
-             || inst == '['
-             || inst == ']'
-             || inst == '.'
-             || inst == ','
-#ifdef DEBUGGER
-             || inst == '#'
-#endif
-#ifdef ASSERTS
-             || inst == '@'
-             || inst == '!'
-#endif
-        );
-}
-
 char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         unsigned ind1 = *ind;
         char cur;
         unsigned int count = 1;
+
+#ifdef DEBUGGER
+#define is_ignored(a) (is_whitespace(a) && a != '\n')
+#else
+#define is_ignored is_comment
+#endif
+
         while (1) {
                 (*ind)++;
                 cur = program_in[*ind];
@@ -60,13 +47,13 @@ char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program
                         break; // If reached EOF, exit
 
                 if (cur != inst
-                 && !is_comment(cur)) 
+                 && !is_ignored(cur)) 
                         break;
 
                 if (count >= 256)
                         break;
 
-                if (!is_comment(cur))
+                if (!is_ignored(cur))
                         count++;
         }
         vector_push(program_out, inst);
@@ -112,30 +99,11 @@ char proc_close_loop(char program_in[], unsigned long *ind, struct vector *progr
         return 0;
 }
 
-signed char parse_digit(char digit) {
-        signed char out;
-        if (digit >= '0' && digit <= '9') {
-                out = digit-'0';
-        } else if (digit >= 'a' && digit <= 'f'){
-                out = digit-'a'+0xa;
-        } else {
-                out = -1;
-        }
-        return out;
-}
-
 char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         signed char digit;
-        unsigned long val = 0;
-        while (1) {
-                (*ind)++;
-                digit = parse_digit(program_in[*ind]);
-                if (digit == -1)
-                        break;
-                val <<= 4;
-                val += digit;
-        }
+        (*ind)++;
+        unsigned long val = parse_number(program_in, ind);
         if (val&0xff00000000000000) {
                 printf("error: `%c` assert value overflow: %lx\n", inst, val);
         }
@@ -148,6 +116,13 @@ char proc_assert(char program_in[], unsigned long *ind, struct vector *program_o
 }
 
 char process_instruction(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+#ifdef DEBUGGER
+        sourcemap_process(
+                program_in[*ind],
+                program_out->length
+        );
+#endif
+
         switch (program_in[*ind]) {
                 case '+':
                 case '-':
@@ -205,6 +180,7 @@ char *optimize(char program_in[]) {
         }
 #ifdef DEBUGGER
         printf("done\n");
+        sourcemap_end(program_out.length-1);
 #endif
         for (int i = 0; i < 8; i++) {
                 vector_push(&program_out, 0);
