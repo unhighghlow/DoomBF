@@ -12,9 +12,9 @@ enum dbg_state {
 };
 
 enum dbg_state debugger_state = DBG_STEP;
-unsigned long exit_search_depth;
-unsigned long exit_target;
-unsigned long sm_next_target;
+uint64_t exit_search_depth;
+uint64_t exit_target;
+uint64_t sm_next_target;
 
 enum addrmap_mode {
         MODE_HEX,
@@ -26,12 +26,12 @@ enum addrmap_mode {
 struct addrmap_value {
         char name[65];
         enum addrmap_mode mode;
-        unsigned long len;
-        unsigned long addr;
+        uint64_t len;
+        uint64_t addr;
 };
 
 struct addrmap {
-        unsigned long count;
+        uint64_t count;
         struct addrmap_value *values;
 };
 
@@ -51,8 +51,8 @@ void debugger_help() {
 
 void load_addrmap_line(char line[], struct addrmap_value *out) {
         enum addrmap_mode mode;
-        unsigned long addr;
-        unsigned long len = 1;
+        uint64_t addr;
+        uint64_t len = 1;
 
         switch (line[0]) {
                 case 'x':
@@ -72,7 +72,7 @@ void load_addrmap_line(char line[], struct addrmap_value *out) {
                         return;
         }
 
-        unsigned long ind = 1;
+        uint64_t ind = 1;
         addr = parse_number(line, &ind);
 
         if (line[ind] == '[') {
@@ -90,10 +90,10 @@ void load_addrmap_line(char line[], struct addrmap_value *out) {
         printf("@%lx M: %x L: %lx N: %s\n", addr, out->mode, out->len, out->name);
 }
 
-unsigned long count_nonempty_lines(char *addrmap, unsigned long length) {
+uint64_t count_nonempty_lines(char *addrmap, uint64_t length) {
         char newline = 1;
-        unsigned long lines = 0;
-        for (unsigned long ind = 0; ind < length; ind++) {
+        uint64_t lines = 0;
+        for (uint64_t ind = 0; ind < length; ind++) {
                 if (addrmap[ind] == '\n') {
                         if (!newline) {
                                 lines++;
@@ -111,10 +111,10 @@ unsigned long count_nonempty_lines(char *addrmap, unsigned long length) {
 void load_addrmap(char *filename) {
         printf("loading addrmap: %s. ", filename);
         char line[65] = {0};
-        unsigned long ind;
-        unsigned long lineind = 0;
-        unsigned long length;
-        unsigned long lines;
+        uint64_t ind;
+        uint64_t lineind = 0;
+        uint64_t length;
+        uint64_t lines;
 
         char *addrmap = read_file(filename, &length);
         if (!addrmap) return;
@@ -153,19 +153,19 @@ load_line:
                 goto load_line;
 }
 
-struct sourcemap_entry *read_sm_entry(unsigned long ind) {
+struct sourcemap_entry *read_sm_entry(uint64_t ind) {
         return (
             (struct sourcemap_entry*)
             ntohll(
-                *(unsigned long*)
+                *(uint64_t*)
                 &sourcemap.entries.ptr[(ind)*8]
             )
         );
 }
 
-unsigned long get_current_sm_ind(unsigned long pc) {
-        unsigned long count = sourcemap.entries.length/8;
-        unsigned long ind = 0;
+uint64_t get_current_sm_ind(uint64_t pc) {
+        uint64_t count = sourcemap.entries.length/8;
+        uint64_t ind = 0;
         while (1) {
                 ind++;
                 if (ind >= count)
@@ -177,10 +177,10 @@ unsigned long get_current_sm_ind(unsigned long pc) {
         return ind;
 }
 
-void debugger_cmd(unsigned long pc) {
+void debugger_cmd(uint64_t pc) {
         char buf[4];
         char filename[17];
-        unsigned long len;
+        uint64_t len;
 
         while (1) {
                 printf("$ ");
@@ -249,12 +249,12 @@ void show_char(char chr) {
         printf("\\%o", chr);
 }
 
-void show_string(CELL tape[], unsigned long addr, unsigned long length, unsigned long dp) {
+void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char elipsis = 0;
         char string_open = 0;
         char start = 1;
         char val;
-        unsigned long cur_addr;
+        uint64_t cur_addr;
 
 #define OPEN_STRING { \
         if (!string_open) { \
@@ -282,7 +282,7 @@ void show_string(CELL tape[], unsigned long addr, unsigned long length, unsigned
         elipsis = 1; \
 }
 
-        for (unsigned long i = 0; i < length; i++) {
+        for (uint64_t i = 0; i < length; i++) {
                 cur_addr = addr + i;
                 if (is_addr_loaded(dp, cur_addr)) {
                         val = tape[cur_addr%(PAGE_SIZE*4)];
@@ -301,11 +301,11 @@ void show_string(CELL tape[], unsigned long addr, unsigned long length, unsigned
         CLOSE_STRING
 } 
 
-void show_bytes(CELL tape[], unsigned long addr, unsigned long length, unsigned long dp) {
+void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char comma = 0;
         char elipsis = 0;
-        unsigned long addr2;
-        for (int i = 0; i < length; i++) {
+        uint64_t addr2;
+        for (int32_t i = 0; i < length; i++) {
 #define PRINT_COMMA \
                 if (comma) \
                         printf(", "); \
@@ -326,12 +326,12 @@ void show_bytes(CELL tape[], unsigned long addr, unsigned long length, unsigned 
         }
 }
 
-void debugger_print_source(unsigned long pc) {
+void debugger_print_source(uint64_t pc) {
         if (!sourcemap.entries.length) return;
 
-        unsigned long count = sourcemap.entries.length/8;
-        unsigned long start;
-        unsigned long ind = get_current_sm_ind(pc);
+        uint64_t count = sourcemap.entries.length/8;
+        uint64_t start;
+        uint64_t ind = get_current_sm_ind(pc);
         start = ind;
 
         printf("SOURCE:\n");
@@ -341,14 +341,14 @@ void debugger_print_source(unsigned long pc) {
         }
 }
 
-void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
+void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         if (!active_addrmap.values) return;
 
         struct addrmap_value *cur;
         CELL val;
 
         printf("VARIABLES:\n");
-        for (int ind = 0; ind < active_addrmap.count; ind++) {
+        for (int32_t ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if (dp >= cur->addr && dp < cur->addr+cur->len)
                         printf(">");
@@ -388,7 +388,7 @@ void debugger_print_addrmap_vals(CELL tape[], unsigned long dp) {
 unsigned char debugger_print_instruction(char inst[]) {
         char cmd = inst[0];
         char arg = inst[1];
-        unsigned long full = ntohll(*(unsigned long*)inst);
+        uint64_t full = ntohll(*(uint64_t*)inst);
 
         switch (cmd) {
                 case '+':
@@ -416,7 +416,7 @@ unsigned char debugger_print_instruction(char inst[]) {
         }
 }
 
-void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, unsigned long pc) {
+void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
         switch (debugger_state) {
                 case DBG_RUN:
                         if (reason == BREAK_REASON_INSTRUCTION)
@@ -449,8 +449,8 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
         }
 
         printf("PROGRAM: 0x%lx\n", pc);
-        unsigned long offset = 0;
-        for (int i = 0; i < 5; i++) {
+        uint64_t offset = 0;
+        for (int32_t i = 0; i < 5; i++) {
                 if (!i) {
                         printf("> ");
                 } else {
@@ -462,13 +462,13 @@ void debugger_call(char reason, CELL tape[], char program[], unsigned long dp, u
         }
 
         printf("TAPE: 0x%lx\n", dp);
-        for (int offset = -3; offset < 4; offset++) {
+        for (int32_t offset = -3; offset < 4; offset++) {
                 printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
                 printf(" ");
         }
 
         printf("\n");
-        for (int i = 0; i < (TYPOGRAPHIC_CELL_WIDTH+1) * 4 - 2; i++) {
+        for (int32_t i = 0; i < (TYPOGRAPHIC_CELL_WIDTH+1) * 4 - 2; i++) {
                 printf(" ");
         }
         printf("^\n");
