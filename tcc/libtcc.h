@@ -63,6 +63,9 @@ LIBTCCAPI int tcc_set_output_type(TCCState *s, int output_type);
 #define TCC_OUTPUT_DLL      3 /* dynamic library */
 #define TCC_OUTPUT_OBJ      4 /* object file */
 #define TCC_OUTPUT_PREPROCESS 5 /* only preprocess (used internally) */
+#ifdef TCC_TARGET_BF
+#define TCC_OUTPUT_BF      6 /* brainfuck script file */
+#endif
 
 /* equivalent to -Lpath option */
 LIBTCCAPI int tcc_add_library_path(TCCState *s, const char *pathname);

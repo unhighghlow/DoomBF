@@ -16,9 +16,10 @@ else()
 
 set(TCC_INCS -I ${CMAKE_SOURCE_DIR}/tcc/win32/include -I ${CMAKE_SOURCE_DIR}/tcc/win32/include/winapi)
 target_compile_definitions(tcc PRIVATE TCC_TARGET_ELF)
-target_compile_definitions(tcc PRIVATE TCC_TARGET_I386) 
+target_compile_definitions(tcc PRIVATE TCC_TARGET_I386)
 endif()
 target_compile_definitions(tcc PRIVATE ONE_SOURCE=1) 
+target_compile_definitions(tcc PRIVATE TCC_TARGET_BF) 
 
 #target_include_directories(tcc PRIVATE ${CMAKE_SOURCE_DIR}/extern)
 
