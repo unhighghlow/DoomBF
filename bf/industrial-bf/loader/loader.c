@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         } else {
                 page_size_power = 24;
         }
-	page_size = 1<<page_size_power;
+        page_size = 1<<page_size_power;
 
         FILE *f = fopen(filename, "rb");
         char *tape = malloc(page_size);
@@ -36,10 +36,10 @@ int main(int argc, char *argv[]) {
 
 void store_page(char *page, long page_size_power, long page_uid) {
         long page_size;
-	page_size = 1<<page_size_power;
+        page_size = 1<<page_size_power;
 
         char filename_buf[17];
-	char *filename = filename_buf + (page_size_power / 4);
+        char *filename = filename_buf + (page_size_power / 4);
         sprintf(filename_buf, "%016lx", page_uid);
         printf("storing page: 0x%s... ", filename);
 

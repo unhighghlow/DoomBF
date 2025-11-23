@@ -36,9 +36,9 @@ Go to address
 [<]<<
 
 Set the address
-6 ++++++++ !6
+6 ++++++ !6
 
-@ BEGIN ALGORITHM
+@# BEGIN ALGORITHM
 
 Copy address to output through scrap
 
@@ -150,4 +150,4 @@ Move the whole array forwards
 
 Output
 
-  >.
+  >. !77w

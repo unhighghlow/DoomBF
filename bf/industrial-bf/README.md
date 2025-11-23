@@ -23,6 +23,81 @@ Replaces the execution environment with a simple CLI debugger that allows you to
 
 Adds a new instruction: `#` (breakpoint)
 
+In the debugger UI, the following commands can be used:
+```
+? - display help
+r - run the program until a breakpoint is reached
+s - step one instruction forward
+x - run until the current loop ends
+n - run until the next sourcemap line
+a - load an addrmap file
+q - quit
+```
+
+#### Addressmaps
+
+An addressmap can be used to display the values of variables from specific tape locations. An addressmap line has the following format:
+
+```
+(mode)(addr)[(length)] (name)
+```
+
+Where `length` is optional
+
+Example:
+```
+d0 address
+x1 output
+x2 scrap
+
+s3[e] array
+a3[e] array
+```
+
+The modes are as follows:
+- `x` -- Print in hexadecimal
+- `d` -- Print in decimal
+- `a` -- Print as an array
+- `s` -- Print as strings
+
+#### Sourcemaps
+
+Every (non-whitespace) comment is assumed to annotate some code (or EOF). For example in the following program:
+```
+a
++ b
+@
+- c
+-
+d >+ e
+<
+x +
+y +
+-
+z <
+end
+```
+
+The comments are as follows:
+```
+[a
++ b
+@]
+[- c
+-]
+[d >+] [e
+<]
+[x +]
+[y +
+-]
+[z <]
+[end]
+```
+
+When executing, the comments are displayed and can be used as breakpoints with the `n` command.
+
+Note: when reading comments, any continuous sequence of whitespace characters is replaced with a space, and whitespace at the beginning of the comment is removed
+
 ### Asserts
 
 Use the `ASSERTS` option

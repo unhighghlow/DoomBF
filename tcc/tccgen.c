@@ -2703,6 +2703,9 @@ ST_FUNC int type_size(CType *type, int *a)
 #else
         *a = 8;
 #endif
+#ifdef TCC_TARGET_BF
+        *a = 4;
+#endif
         return 8;
     } else if (bt == VT_INT || bt == VT_FLOAT) {
         *a = 4;

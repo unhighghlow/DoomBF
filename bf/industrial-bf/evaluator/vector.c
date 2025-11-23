@@ -5,15 +5,19 @@ struct vector {
         unsigned long length;
 };
 
+void vector_init(struct vector *vec, unsigned long capacity) {
+        if (capacity) {
+                vec->ptr = safe_malloc(capacity);
+        } else {
+                vec->ptr = 0;
+        }
+        vec->capacity = capacity;
+        vec->length = 0;
+}
+
 struct vector vector_create(unsigned long capacity) {
         struct vector vec;
-        if (capacity) {
-                vec.ptr = safe_malloc(capacity);
-        } else {
-                vec.ptr = 0;
-        }
-        vec.capacity = capacity;
-        vec.length = 0;
+        vector_init(&vec, 0);
         return vec;
 }
 
@@ -42,8 +46,8 @@ void vector_drop(struct vector *vec) {
 }
 
 void *vector_unwrap(struct vector *vec) {
-        safe_realloc(vec->ptr, vec->length);
-        return vec->ptr;
+        char *p = safe_realloc(vec->ptr, vec->length);
+        return p;
 }
 
 void vector_push_long(struct vector *out, unsigned long item) {
