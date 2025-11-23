@@ -1810,11 +1810,6 @@ reparse:
         case TCC_OPTION_g:
             s->do_debug = 1;
             break;
-#ifdef TCC_OUTPUT_BF
-        case TCC_OPTION_bf:
-            x = TCC_OUTPUT_BF;
-            break;
-#endif
         case TCC_OPTION_c:
             x = TCC_OUTPUT_OBJ;
         set_output_type:
@@ -1844,6 +1839,11 @@ reparse:
         case TCC_OPTION_shared:
             x = TCC_OUTPUT_DLL;
             goto set_output_type;
+#ifdef TCC_OUTPUT_BF
+        case TCC_OPTION_bf:
+            x = TCC_OUTPUT_BF;
+            goto set_output_type;
+#endif
         case TCC_OPTION_soname:
             s->soname = tcc_strdup(optarg);
             break;

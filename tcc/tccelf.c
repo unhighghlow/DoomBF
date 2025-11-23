@@ -2233,6 +2233,11 @@ static int elf_output_file(TCCState *s1, const char *filename)
 LIBTCCAPI int tcc_output_file(TCCState *s, const char *filename)
 {
     int ret;
+#ifdef TCC_TARGET_BF
+    if (s->output_type == TCC_OUTPUT_BF) {
+        ret = bf_output_file(s, filename);
+    } else
+#endif
 #ifdef TCC_TARGET_PE
     if (s->output_type != TCC_OUTPUT_OBJ) {
         ret = pe_output_file(s, filename);
