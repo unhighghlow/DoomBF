@@ -3,8 +3,8 @@
 
 #define TYPOGRAPHIC_CELL_WIDTH ((sizeof (CELL)) * 2)
 
+#define B_FG "\033[36m"
 #define G_FG "\033[32m"
-#define Y_FG "\033[33m"
 #define FG_r "\033[0m"
 #define FADE "\033[2m"
 #define FADE_r "\033[22m"
@@ -189,7 +189,7 @@ void debugger_cmd(uint64_t pc) {
         uint64_t len;
 
         while (1) {
-                printf(Y_FG "$ " FG_r);
+                printf(G_FG "$ " FG_r);
 skip_prompt:
                 fgets(buf, 3, stdin);
 
@@ -216,7 +216,7 @@ skip_prompt:
                                 debugger_state = DBG_SM_NEXT;
                                 goto continue_execution;
                         case 'a':
-                                printf(Y_FG "addrmap: " FG_r);
+                                printf(G_FG "addrmap: " FG_r);
                                 fgets(filename, 16, stdin);
                                 len = strlen(filename);
                                 if (filename[len-1] == 0xa) {
@@ -277,7 +277,7 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         if (string_open) { \
                 printf("\""); \
                 if (val) \
-                        printf(G_FG "!" FG_r); \
+                        printf(B_FG "!" FG_r); \
         } \
         string_open = 0; \
 }
@@ -353,7 +353,7 @@ void debugger_print_source(uint64_t pc) {
         start = ind;
 
         printf(FADE "SOURCE: \n" FADE_r);
-        printf("> " G_FG "%s\n" FG_r, read_sm_entry(ind)->text);
+        printf("> " B_FG "%s\n" FG_r, read_sm_entry(ind)->text);
         for (ind++; ind < count && ind < start+4; ind++) {
                 printf("  %s\n", read_sm_entry(ind)->text);
         }
@@ -369,7 +369,7 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         for (int32_t ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if (dp >= cur->addr && dp < cur->addr+cur->len)
-                        printf("> " G_FG);
+                        printf("> " B_FG);
                 else
                         printf("  ");
                 printf("%s: ", cur->name);
@@ -474,7 +474,7 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
         uint64_t offset = 0;
         for (int32_t i = 0; i < 5; i++) {
                 if (!i) {
-                        printf("> " G_FG);
+                        printf("> " B_FG);
                 } else {
                         printf("  ");
                 }
