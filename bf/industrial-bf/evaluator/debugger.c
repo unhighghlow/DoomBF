@@ -330,7 +330,7 @@ void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         for (int32_t i = 0; i < length; i++) {
 #define PRINT_COMMA \
                 if (comma) \
-                        printf(", "); \
+                        printf(", " FADE_r); \
                 comma = 1;
 
                 addr2 = addr+i;
@@ -339,16 +339,17 @@ void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
                         val = tape[addr2%(PAGE_SIZE*4)];
                         if (!val)
                                 printf(FADE);
-                        printf("0x%x" FADE_r, val);
+                        printf("0x%x", val);
                         elipsis = 0;
                 } else {
                         if (!elipsis) {
                                 PRINT_COMMA
-                                printf(FADE "..." FADE_r);
+                                printf(FADE "...");
                         }
                         elipsis = 1;
                 }
         }
+        printf(FADE_r);
 }
 
 void debugger_print_source(uint64_t pc) {
