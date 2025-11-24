@@ -493,8 +493,14 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
         }
 
         printf(FADE "TAPE: " FADE_r "0x%lx\n", dp);
+        CELL val;
         for (int32_t offset = -3; offset < 4; offset++) {
-                printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
+                val = tape[(dp+offset)%(PAGE_SIZE*4)];
+                if (!offset)
+                        printf(B_FG);
+                if (!val)
+                        printf(FADE);
+                printf(CELL_FORMAT_STRING FG_r FADE_r, val);
                 printf(" ");
         }
 
