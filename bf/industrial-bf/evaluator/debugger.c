@@ -43,6 +43,10 @@ struct addrmap {
 
 struct addrmap active_addrmap = {0};
 
+#define max_output_len 16
+uint8_t output_len;
+char output_buf[max_output_len];
+
 void debugger_help() {
         printf(
                 "? - display help\n"
@@ -237,6 +241,18 @@ continue_execution:
 
 void debugger_init() {
         debugger_state = DBG_STEP;
+        output_len = 0;
+}
+
+void debugger_out(char chr) {
+        output_len++;
+        if (output_len > max_output_len) {
+                output_len--;
+                for (uint32_t i = 1; i < max_output_len; i++) {
+                        output_buf[i-1] = output_buf[i];
+                }
+        }
+        output_buf[output_len-1] = chr;
 }
 
 void show_char(char chr) {
@@ -446,10 +462,31 @@ unsigned char debugger_print_instruction(char inst[]) {
         }
 }
 
+void debugger_print_output() {
+        if (!output_len) return;
+
+        printf(FADE "OUTPUT:" FADE_r);
+        for (uint32_t i = 0; i < output_len; i++) {
+                printf(" %2x", output_buf[i]);
+        }
+        printf("\n       ");
+
+        for (uint32_t i = 0; i < output_len; i++) {
+                char chr = output_buf[i];
+                if (chr >= ' ' && chr <= '~')
+                        printf("  %c", chr);
+                else if (chr == '\n')
+                        printf(" \\n");
+        }
+        printf("\n");
+}
+
 void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
         switch (debugger_state) {
                 case DBG_RUN:
                         if (reason == BREAK_REASON_INSTRUCTION)
+                                if (!program[pc])
+                                        debugger_print_output();
                                 return;
                         break;
                 case DBG_STEP:
@@ -512,6 +549,7 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
 
         debugger_print_addrmap_vals(tape, dp);
         debugger_print_source(pc);
+        debugger_print_output();
 
         debugger_cmd(pc);
 }
