@@ -240,19 +240,26 @@ void debugger_init() {
 }
 
 void show_char(char chr) {
-        if (chr == '"') {
+        if (chr == '"')
                 printf("\\\"");
-                return;
-        }
-        if (chr == '\\') {
+
+        else if (chr == '\\')
                 printf("\\\\");
-                return;
-        }
-        if (chr >= ' ' && chr <= '~') {
+
+        else if (chr == '\n')
+                printf("\\n");
+
+        else if (chr == '\r')
+                printf("\\r");
+
+        else if (chr == '\t')
+                printf("\\t");
+
+        else if (chr >= ' ' && chr <= '~')
                 printf("%c", chr);
-                return;
-        }
-        printf("\\%o", chr);
+
+        else
+                printf("\\%o", chr);
 }
 
 void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
