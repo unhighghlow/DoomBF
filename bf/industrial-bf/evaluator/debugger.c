@@ -183,7 +183,7 @@ void debugger_cmd(uint64_t pc) {
         uint64_t len;
 
         while (1) {
-                printf("$ ");
+                printf("\033[33m$\033[0m ");
 skip_prompt:
                 fgets(buf, 3, stdin);
 
@@ -210,7 +210,7 @@ skip_prompt:
                                 debugger_state = DBG_SM_NEXT;
                                 goto continue_execution;
                         case 'a':
-                                printf("addrmap: ");
+                                printf("\033[32maddrmap:\033[0m ");
                                 fgets(filename, 16, stdin);
                                 len = strlen(filename);
                                 if (filename[len-1] == 0xa) {
@@ -230,7 +230,7 @@ continue_execution:
 }
 
 void debugger_init() {
-        debugger_cmd(0);
+        debugger_state = DBG_STEP;
 }
 
 void show_char(char chr) {
@@ -256,14 +256,16 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char val;
         uint64_t cur_addr;
 
-#define OPEN_STRING { \
+#define OPEN_STRING_EX(s) { \
         if (!string_open) { \
                 if (!start) \
                         printf(" "); \
-                printf("\""); \
+                printf(s "\""); \
         } \
         string_open = 1; \
 }
+
+#define OPEN_STRING OPEN_STRING_EX("")
 
 #define CLOSE_STRING { \
         if (string_open) { \
@@ -286,11 +288,17 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
                 cur_addr = addr + i;
                 if (is_addr_loaded(dp, cur_addr)) {
                         val = tape[cur_addr%(PAGE_SIZE*4)];
-                        OPEN_STRING
+                        if (!val)
+                                OPEN_STRING_EX("\033[2m")
+                        else
+                                OPEN_STRING
+
                         if (val)
                                 show_char(val);
-                        else
+                        else {
                                 CLOSE_STRING
+                                printf("\033[22m");
+                        }
                         elipsis = 0;
                 } else {
                         ELIPSIS
@@ -304,6 +312,7 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
 void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char comma = 0;
         char elipsis = 0;
+        CELL val;
         uint64_t addr2;
         for (int32_t i = 0; i < length; i++) {
 #define PRINT_COMMA \
@@ -314,7 +323,10 @@ void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
                 addr2 = addr+i;
                 if (is_addr_loaded(dp, addr2)) {
                         PRINT_COMMA
-                        printf("0x%x", tape[addr2%(PAGE_SIZE*4)]);
+                        val = tape[addr2%(PAGE_SIZE*4)];
+                        if (!val)
+                                printf("\033[2m");
+                        printf("0x%x\033[22m", val);
                         elipsis = 0;
                 } else {
                         if (!elipsis) {
@@ -334,8 +346,8 @@ void debugger_print_source(uint64_t pc) {
         uint64_t ind = get_current_sm_ind(pc);
         start = ind;
 
-        printf("SOURCE:\n");
-        printf("> %s\n", read_sm_entry(ind)->text);
+        printf("\033[2mSOURCE:\033[22m\n");
+        printf("> \033[32m%s\033[0m\n", read_sm_entry(ind)->text);
         for (ind++; ind < count && ind < start+4; ind++) {
                 printf("  %s\n", read_sm_entry(ind)->text);
         }
@@ -347,11 +359,11 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         struct addrmap_value *cur;
         CELL val;
 
-        printf("VARIABLES:\n");
+        printf("\033[2mVARIABLES:\033[22m\n");
         for (int32_t ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if (dp >= cur->addr && dp < cur->addr+cur->len)
-                        printf(">");
+                        printf(">\033[32m");
                 else
                         printf(" ");
                 printf("%s: ", cur->name);
@@ -367,11 +379,15 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
                 switch(cur->mode) {
                         case MODE_HEX:
                                 ELIPSIS_IF_NOT_LOADED
-                                printf("0x%x", val);
+                                if (!val)
+                                        printf("\033[2m");
+                                printf("0x%x\033[22m", val);
                                 break;
                         case MODE_DEC:
                                 ELIPSIS_IF_NOT_LOADED
-                                printf("%x", val);
+                                if (!val)
+                                        printf("\033[2m");
+                                printf("%d\033[22m", val);
                                 break;
                         case MODE_BYTES:
                                 show_bytes(tape, cur->addr, cur->len, dp);
@@ -381,7 +397,7 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
                                 break;
                 }
 
-                printf("\n");
+                printf("\033[0m\n");
         }
 }
 
@@ -448,20 +464,21 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
                         return;
         }
 
-        printf("PROGRAM: 0x%lx\n", pc);
+        printf("\033[2mPROGRAM:\033[22m 0x%lx\n", pc);
         uint64_t offset = 0;
         for (int32_t i = 0; i < 5; i++) {
                 if (!i) {
-                        printf("> ");
+                        printf("> \033[32m");
                 } else {
                         printf("  ");
                 }
                 printf("%04lx:\t", pc+offset);
                 offset += debugger_print_instruction(&program[pc+offset]);
+                printf("\033[0m");
                 if (!program[pc+offset]) break;
         }
 
-        printf("TAPE: 0x%lx\n", dp);
+        printf("\033[2mTAPE:\033[22m 0x%lx\n", dp);
         for (int32_t offset = -3; offset < 4; offset++) {
                 printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
                 printf(" ");
