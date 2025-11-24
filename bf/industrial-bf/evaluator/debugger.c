@@ -456,6 +456,9 @@ unsigned char debugger_print_instruction(char inst[]) {
                 case '#':
                         printf("%c\n", cmd);
                         return 1;
+                case 0:
+                        printf("end\n");
+                        return 0;
                 default:
                         printf("??? %x %x\n", (unsigned char)cmd, (unsigned char)arg);
                         return 2;
