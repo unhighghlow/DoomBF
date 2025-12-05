@@ -2,16 +2,16 @@
 
 #define PAGE_SIZE (1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)
-#define PAGE_COUNT ((~((unsigned long)0)>>PAGE_SIZE_POWER)+1)
+#define PAGE_COUNT ((~((uint64_t)0)>>PAGE_SIZE_POWER)+1)
 
-void load_page(CELL *tape, unsigned long page_uid);
-void store_page(CELL *tape, unsigned long page_uid);
+void load_page(CELL *tape, uint64_t page_uid);
+void store_page(CELL *tape, uint64_t page_uid);
 
-unsigned long get_page_uid(unsigned long dp) {
+uint64_t get_page_uid(uint64_t dp) {
         return dp / PAGE_SIZE;
 }
 
-char get_page_n(unsigned long dp) {
+char get_page_n(uint64_t dp) {
         return dp / PAGE_SIZE % 4;
 }
 
@@ -24,18 +24,18 @@ char get_page_n(unsigned long dp) {
         } \
 }
 
-void perform_page_switch(CELL tape[], signed char expected_direction, unsigned long dp) {
+void perform_page_switch(CELL tape[], signed char expected_direction, uint64_t dp) {
         // 0      1      2      3  
         // store keep current load
         // current page ^
         // expected direction -->
         
-        unsigned long current_page_uid = get_page_uid(dp);
+        uint64_t current_page_uid = get_page_uid(dp);
         store_page(tape, (current_page_uid - (expected_direction * 2)) % PAGE_COUNT);
         load_page(tape, (current_page_uid + expected_direction) % PAGE_COUNT);
 }
 
-void store_page(CELL tape[], unsigned long page_uid) {
+void store_page(CELL tape[], uint64_t page_uid) {
         char page_n = page_uid % 4;
         CELL *target = &tape[PAGE_SIZE*page_n];
 
@@ -62,7 +62,7 @@ void store_page(CELL tape[], unsigned long page_uid) {
         fclose(f);
 }
 
-void load_page(CELL tape[], unsigned long page_uid) {
+void load_page(CELL tape[], uint64_t page_uid) {
         char page_n = page_uid % 4;
         CELL *target = &tape[PAGE_SIZE*page_n];
 
@@ -92,9 +92,9 @@ void load_page(CELL tape[], unsigned long page_uid) {
         fclose(f);
 }
 
-char is_addr_loaded(unsigned long dp, unsigned long addr) {
-        unsigned long cur_page = get_page_uid(dp);
-        unsigned long target_page = get_page_uid(addr);
+char is_addr_loaded(uint64_t dp, uint64_t addr) {
+        uint64_t cur_page = get_page_uid(dp);
+        uint64_t target_page = get_page_uid(addr);
 
         return (
                 target_page == ((cur_page - 1) % PAGE_COUNT)
