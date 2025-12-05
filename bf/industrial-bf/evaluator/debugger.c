@@ -3,6 +3,12 @@
 
 #define TYPOGRAPHIC_CELL_WIDTH ((sizeof (CELL)) * 2)
 
+#define B_FG "\033[36m"
+#define G_FG "\033[32m"
+#define FG_r "\033[0m"
+#define FADE "\033[2m"
+#define FADE_r "\033[22m"
+
 enum dbg_state {
         DBG_STEP,
         DBG_RUN,
@@ -36,6 +42,10 @@ struct addrmap {
 };
 
 struct addrmap active_addrmap = {0};
+
+#define max_output_len 16
+uint8_t output_len;
+char output_buf[max_output_len];
 
 void debugger_help() {
         printf(
@@ -183,7 +193,7 @@ void debugger_cmd(uint64_t pc) {
         uint64_t len;
 
         while (1) {
-                printf("$ ");
+                printf(G_FG "$ " FG_r);
 skip_prompt:
                 fgets(buf, 3, stdin);
 
@@ -210,7 +220,7 @@ skip_prompt:
                                 debugger_state = DBG_SM_NEXT;
                                 goto continue_execution;
                         case 'a':
-                                printf("addrmap: ");
+                                printf(G_FG "addrmap: " FG_r);
                                 fgets(filename, 16, stdin);
                                 len = strlen(filename);
                                 if (filename[len-1] == 0xa) {
@@ -230,23 +240,42 @@ continue_execution:
 }
 
 void debugger_init() {
-        debugger_cmd(0);
+        debugger_state = DBG_STEP;
+        output_len = 0;
+}
+
+void debugger_out(char chr) {
+        output_len++;
+        if (output_len > max_output_len) {
+                output_len--;
+                for (uint32_t i = 1; i < max_output_len; i++) {
+                        output_buf[i-1] = output_buf[i];
+                }
+        }
+        output_buf[output_len-1] = chr;
 }
 
 void show_char(char chr) {
-        if (chr == '"') {
+        if (chr == '"')
                 printf("\\\"");
-                return;
-        }
-        if (chr == '\\') {
+
+        else if (chr == '\\')
                 printf("\\\\");
-                return;
-        }
-        if (chr >= ' ' && chr <= '~') {
+
+        else if (chr == '\n')
+                printf("\\n");
+
+        else if (chr == '\r')
+                printf("\\r");
+
+        else if (chr == '\t')
+                printf("\\t");
+
+        else if (chr >= ' ' && chr <= '~')
                 printf("%c", chr);
-                return;
-        }
-        printf("\\%o", chr);
+
+        else
+                printf("\\%o", chr);
 }
 
 void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
@@ -256,20 +285,22 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char val;
         uint64_t cur_addr;
 
-#define OPEN_STRING { \
+#define OPEN_STRING_EX(s) { \
         if (!string_open) { \
                 if (!start) \
                         printf(" "); \
-                printf("\""); \
+                printf(s "\""); \
         } \
         string_open = 1; \
 }
+
+#define OPEN_STRING OPEN_STRING_EX("")
 
 #define CLOSE_STRING { \
         if (string_open) { \
                 printf("\""); \
                 if (val) \
-                        printf("!"); \
+                        printf(B_FG "!" FG_r); \
         } \
         string_open = 0; \
 }
@@ -277,7 +308,7 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
 #define ELIPSIS { \
         if (!elipsis) { \
                 CLOSE_STRING \
-                printf("..."); \
+                printf(FADE "..." FADE_r); \
         } \
         elipsis = 1; \
 }
@@ -286,11 +317,17 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
                 cur_addr = addr + i;
                 if (is_addr_loaded(dp, cur_addr)) {
                         val = tape[cur_addr%(PAGE_SIZE*4)];
-                        OPEN_STRING
+                        if (!val)
+                                OPEN_STRING_EX(FADE)
+                        else
+                                OPEN_STRING
+
                         if (val)
                                 show_char(val);
-                        else
+                        else {
                                 CLOSE_STRING
+                                printf(FADE_r);
+                        }
                         elipsis = 0;
                 } else {
                         ELIPSIS
@@ -304,26 +341,31 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
 void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t dp) {
         char comma = 0;
         char elipsis = 0;
+        CELL val;
         uint64_t addr2;
         for (int32_t i = 0; i < length; i++) {
 #define PRINT_COMMA \
                 if (comma) \
-                        printf(", "); \
+                        printf(", " FADE_r); \
                 comma = 1;
 
                 addr2 = addr+i;
                 if (is_addr_loaded(dp, addr2)) {
                         PRINT_COMMA
-                        printf("0x%x", tape[addr2%(PAGE_SIZE*4)]);
+                        val = tape[addr2%(PAGE_SIZE*4)];
+                        if (!val)
+                                printf(FADE);
+                        printf("0x%x", val);
                         elipsis = 0;
                 } else {
                         if (!elipsis) {
                                 PRINT_COMMA
-                                printf("...");
+                                printf(FADE "...");
                         }
                         elipsis = 1;
                 }
         }
+        printf(FADE_r);
 }
 
 void debugger_print_source(uint64_t pc) {
@@ -334,8 +376,8 @@ void debugger_print_source(uint64_t pc) {
         uint64_t ind = get_current_sm_ind(pc);
         start = ind;
 
-        printf("SOURCE:\n");
-        printf("> %s\n", read_sm_entry(ind)->text);
+        printf(FADE "SOURCE: \n" FADE_r);
+        printf("> " B_FG "%s\n" FG_r, read_sm_entry(ind)->text);
         for (ind++; ind < count && ind < start+4; ind++) {
                 printf("  %s\n", read_sm_entry(ind)->text);
         }
@@ -347,18 +389,18 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         struct addrmap_value *cur;
         CELL val;
 
-        printf("VARIABLES:\n");
+        printf(FADE "VARIABLES:\n" FADE_r);
         for (int32_t ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if (dp >= cur->addr && dp < cur->addr+cur->len)
-                        printf(">");
+                        printf("> " B_FG);
                 else
-                        printf(" ");
+                        printf("  ");
                 printf("%s: ", cur->name);
 
 #define ELIPSIS_IF_NOT_LOADED \
                 if (!is_addr_loaded(dp, cur->addr)) { \
-                        printf("...\n"); \
+                        printf(FADE "...\n" FADE_r); \
                         continue; \
                 }
 
@@ -367,11 +409,15 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
                 switch(cur->mode) {
                         case MODE_HEX:
                                 ELIPSIS_IF_NOT_LOADED
-                                printf("0x%x", val);
+                                if (!val)
+                                        printf(FADE);
+                                printf("0x%x" FADE_r, val);
                                 break;
                         case MODE_DEC:
                                 ELIPSIS_IF_NOT_LOADED
-                                printf("%x", val);
+                                if (!val)
+                                        printf(FADE);
+                                printf("%d" FADE_r, val);
                                 break;
                         case MODE_BYTES:
                                 show_bytes(tape, cur->addr, cur->len, dp);
@@ -381,7 +427,7 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
                                 break;
                 }
 
-                printf("\n");
+                printf(FG_r "\n");
         }
 }
 
@@ -410,16 +456,40 @@ unsigned char debugger_print_instruction(char inst[]) {
                 case '#':
                         printf("%c\n", cmd);
                         return 1;
+                case 0:
+                        printf("end\n");
+                        return 0;
                 default:
                         printf("??? %x %x\n", (unsigned char)cmd, (unsigned char)arg);
                         return 2;
         }
 }
 
+void debugger_print_output() {
+        if (!output_len) return;
+
+        printf(FADE "OUTPUT:" FADE_r);
+        for (uint32_t i = 0; i < output_len; i++) {
+                printf(" %2x", output_buf[i]);
+        }
+        printf("\n       ");
+
+        for (uint32_t i = 0; i < output_len; i++) {
+                char chr = output_buf[i];
+                if (chr >= ' ' && chr <= '~')
+                        printf("  %c", chr);
+                else if (chr == '\n')
+                        printf(" \\n");
+        }
+        printf("\n");
+}
+
 void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
         switch (debugger_state) {
                 case DBG_RUN:
                         if (reason == BREAK_REASON_INSTRUCTION)
+                                if (!program[pc])
+                                        debugger_print_output();
                                 return;
                         break;
                 case DBG_STEP:
@@ -448,22 +518,29 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
                         return;
         }
 
-        printf("PROGRAM: 0x%lx\n", pc);
+        printf(FADE "PROGRAM: " FADE_r "0x%lx\n", pc);
         uint64_t offset = 0;
         for (int32_t i = 0; i < 5; i++) {
                 if (!i) {
-                        printf("> ");
+                        printf("> " B_FG);
                 } else {
                         printf("  ");
                 }
                 printf("%04lx:\t", pc+offset);
                 offset += debugger_print_instruction(&program[pc+offset]);
+                printf(FG_r);
                 if (!program[pc+offset]) break;
         }
 
-        printf("TAPE: 0x%lx\n", dp);
+        printf(FADE "TAPE: " FADE_r "0x%lx\n", dp);
+        CELL val;
         for (int32_t offset = -3; offset < 4; offset++) {
-                printf(CELL_FORMAT_STRING, tape[(dp+offset)%(PAGE_SIZE*4)]);
+                val = tape[(dp+offset)%(PAGE_SIZE*4)];
+                if (!offset)
+                        printf(B_FG);
+                if (!val)
+                        printf(FADE);
+                printf(CELL_FORMAT_STRING FG_r FADE_r, val);
                 printf(" ");
         }
 
@@ -475,6 +552,7 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
 
         debugger_print_addrmap_vals(tape, dp);
         debugger_print_source(pc);
+        debugger_print_output();
 
         debugger_cmd(pc);
 }

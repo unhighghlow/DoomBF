@@ -154,7 +154,11 @@ left:
         NEXT
 
 output:
+#ifdef DEBUGGER
+        debugger_out(tape[dp%HOT_TAPE]);
+#else
         putchar(tape[dp%HOT_TAPE]);
+#endif
         pc+=1;
         NEXT
 
