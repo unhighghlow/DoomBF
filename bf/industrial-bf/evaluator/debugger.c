@@ -487,10 +487,11 @@ void debugger_print_output() {
 void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
         switch (debugger_state) {
                 case DBG_RUN:
-                        if (reason == BREAK_REASON_INSTRUCTION)
+                        if (reason == BREAK_REASON_INSTRUCTION) {
                                 if (!program[pc])
                                         debugger_print_output();
                                 return;
+                        }
                         break;
                 case DBG_STEP:
                         break;
