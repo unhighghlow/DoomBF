@@ -90,10 +90,10 @@ void load_addrmap_line(char line[], struct addrmap_value *out) {
         if (line[ind] == '[') {
                 ind++;
                 len = parse_number(line, &ind);
-		if (line[ind] == '/') {
-			ind++;
-			step = parse_number(line, &ind);
-		}
+                if (line[ind] == '/') {
+                        ind++;
+                        step = parse_number(line, &ind);
+                }
                 ind++;
         }
         ind++;
@@ -194,15 +194,40 @@ uint64_t get_current_sm_ind(uint64_t pc) {
         return ind;
 }
 
+char readline(char *out, uint32_t len) {
+        char buf[2];
+        char ret = 0;
+        uint32_t pos = 0;
+        do {
+                fgets(buf, 2, stdin);
+                if (buf[0] != '\n') {
+                        if (pos >= len)
+                                ret = 1;
+                        else
+                                out[pos++] = buf[0];
+                }
+        } while (buf[0] && buf[0] != '\n');
+        out[pos] = 0;
+        return ret;
+}
+
+char last_cmd = 0;
+
 void debugger_cmd(uint64_t pc) {
-        char buf[4];
+        char buf[2];
         char filename[17];
         uint64_t len;
 
         while (1) {
                 printf(G_FG "$ " FG_r);
 skip_prompt:
-                fgets(buf, 3, stdin);
+                if (readline(buf, 1))
+                        buf[0] = 0xff;
+
+                if (!buf[0])
+                        buf[0] = last_cmd;
+
+                last_cmd = buf[0];
 
                 switch (buf[0]) {
                         case '\n':
@@ -291,7 +316,7 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t step, uin
         char start = 1;
         char val;
         uint64_t cur_addr;
-	printf(FG_r);
+        printf(FG_r);
 
 #define OPEN_STRING_EX(s) { \
         if (!string_open) { \
@@ -330,16 +355,16 @@ void show_string(CELL tape[], uint64_t addr, uint64_t length, uint64_t step, uin
                         else
                                 OPEN_STRING
 
-			if (dp == cur_addr)
-				printf(B_FG);
+                        if (dp == cur_addr)
+                                printf(B_FG);
                         if (val)
                                 show_char(val);
                         else {
                                 CLOSE_STRING
                                 printf(FADE_r);
                         }
-			if (dp == cur_addr)
-				printf(FG_r);
+                        if (dp == cur_addr)
+                                printf(FG_r);
                         elipsis = 0;
                 } else {
                         ELIPSIS
@@ -354,7 +379,7 @@ void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t step, uint
         char comma = 0;
         char elipsis = 0;
         CELL val;
-	printf(FG_r);
+        printf(FG_r);
         uint64_t addr2;
         for (int32_t i = 0; i < length*step; i+=step) {
 #define PRINT_COMMA \
@@ -368,11 +393,11 @@ void show_bytes(CELL tape[], uint64_t addr, uint64_t length, uint64_t step, uint
                         val = tape[addr2%(PAGE_SIZE*4)];
                         if (!val)
                                 printf(FADE);
-			if (dp == addr2)
-				printf(B_FG);
+                        if (dp == addr2)
+                                printf(B_FG);
                         printf("0x%x", val);
-			if (dp == addr2)
-				printf(FG_r);
+                        if (dp == addr2)
+                                printf(FG_r);
                         elipsis = 0;
                 } else {
                         if (!elipsis) {
@@ -410,7 +435,7 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         for (int32_t ind = 0; ind < active_addrmap.count; ind++) {
                 cur = &active_addrmap.values[ind];
                 if ((dp-(cur->addr) < (cur->len*cur->step))
-		 && !((dp-(cur->addr)) % cur->step))
+                 && !((dp-(cur->addr)) % cur->step))
                         printf("> " B_FG);
                 else
                         printf("  ");
