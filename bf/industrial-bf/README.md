@@ -34,6 +34,8 @@ a - load an addrmap file
 q - quit
 ```
 
+If you input an empty line, the last command will be repeated
+
 #### Addressmaps
 
 An addressmap can be used to display the values of variables from specific tape locations. An addressmap line has the following format:
