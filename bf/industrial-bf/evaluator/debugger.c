@@ -425,7 +425,7 @@ void debugger_print_source(uint64_t pc) {
         printf(FADE "SOURCE: \n" FADE_r);
 
 
-        for (uint64_t ind = start; ind < start+count && ind < count; ind++) {
+        for (uint64_t ind = start; ind < start+6 && ind < count; ind++) {
                 if (ind == current)
                         printf("> " B_FG);
                 else
