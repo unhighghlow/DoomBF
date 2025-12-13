@@ -8,7 +8,7 @@
 
 struct loop_data {
         unsigned char sp;
-        unsigned long stack[256];
+        uint64_t stack[256];
 };
 
 #define LD_PUSH(ld, i) \
@@ -27,11 +27,11 @@ struct loop_data {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+char proc_rol_inst(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         unsigned ind1 = *ind;
         char cur;
-        unsigned int count = 1;
+        uint32_t count = 1;
 
 #ifdef DEBUGGER
 #define is_ignored(a) (is_whitespace(a) && a != '\n')
@@ -61,13 +61,13 @@ char proc_rol_inst(char program_in[], unsigned long *ind, struct vector *program
         return 0;
 }
 
-char proc_unrol_inst(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+char proc_unrol_inst(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         vector_push(program_out, program_in[*ind]);
         (*ind)++;
         return 0;
 }
 
-char proc_open_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+char proc_open_loop(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         LD_PUSH(ld, program_out->length);
         vector_push_long(
                 program_out,
@@ -77,8 +77,8 @@ char proc_open_loop(char program_in[], unsigned long *ind, struct vector *progra
         return 0;
 }
 
-char proc_close_loop(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
-        unsigned long start_ind;
+char proc_close_loop(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+        uint64_t start_ind;
         if (*ind & 0xff000000) {
                 printf("error: index overflow\n");
                 return 1;
@@ -88,34 +88,34 @@ char proc_close_loop(char program_in[], unsigned long *ind, struct vector *progr
 
         write_long(
                 program_out->ptr + start_ind,
-                program_out->length | (((long)'[') << (8*7))
+                program_out->length | (((int64_t)'[') << (8*7))
         );
 
         vector_push_long(
                 program_out,
-                start_ind | (((long)']') << (8*7))
+                start_ind | (((int64_t)']') << (8*7))
         );
         (*ind)++;
         return 0;
 }
 
-char proc_assert(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+char proc_assert(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         char inst = program_in[*ind];
         signed char digit;
         (*ind)++;
-        unsigned long val = parse_number(program_in, ind);
+        uint64_t val = parse_number(program_in, ind);
         if (val&0xff00000000000000) {
                 printf("error: `%c` assert value overflow: %lx\n", inst, val);
         }
 
         vector_push_long(
                 program_out,
-                val | (((long)inst) << (8*7))
+                val | (((int64_t)inst) << (8*7))
         );
         return 0;
 }
 
-char process_instruction(char program_in[], unsigned long *ind, struct vector *program_out, struct loop_data *ld) {
+char process_instruction(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
 #ifdef DEBUGGER
         sourcemap_process(
                 program_in[*ind],
@@ -159,10 +159,10 @@ char process_instruction(char program_in[], unsigned long *ind, struct vector *p
 char *optimize(char program_in[]) {
         struct vector program_out = vector_create(0);
 
-        unsigned long ind = 0;
+        uint64_t ind = 0;
         char last_char = 0;
         char cur_char;
-        int count = -1;
+        int32_t count = -1;
 
         // Loop optimization
         struct loop_data ld;
@@ -182,11 +182,11 @@ char *optimize(char program_in[]) {
         printf("done\n");
         sourcemap_end(program_out.length-1);
 #endif
-        for (int i = 0; i < 8; i++) {
+        for (int32_t i = 0; i < 8; i++) {
                 vector_push(&program_out, 0);
         }
 /*
-        for (unsigned long i = 0; i < program_out.length; i++){
+        for (uint64_t i = 0; i < program_out.length; i++){
                 printf("%lx: %x\n", i, *(program_out.ptr + i));
         }
 */

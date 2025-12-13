@@ -1,14 +1,12 @@
 #include "config.h"
-#include <arpa/inet.h>
-#include <errno.h>
 
-long round_up_to_power_of_two(long n) {
-        long power = 1;
+uint64_t round_up_to_power_of_two(uint64_t n) {
+        uint64_t power = 1;
         while (power < n) power *= 2;
         return power;
 }
 
-void *safe_malloc(long size) {
+void *safe_malloc(uint64_t size) {
         void *p = malloc(size);
         if (!p) {
                 printf("memory allocation failed\n");
@@ -17,7 +15,7 @@ void *safe_malloc(long size) {
         return p;
 }
 
-void *safe_realloc(void *ptr, long size) {
+void *safe_realloc(void *ptr, uint64_t size) {
         void *p = realloc(ptr, size);
         if (!p) {
                 printf("memory allocation failed\n");
@@ -26,20 +24,20 @@ void *safe_realloc(void *ptr, long size) {
         return p;
 }
 
-void write_long(char *ptr, unsigned long item) {
-        for (int i = 0; i < 8; i++) {
+void write_long(char *ptr, uint64_t item) {
+        for (int32_t i = 0; i < 8; i++) {
                 *(ptr+i) = item>>(8*(7-i));
         }
 }
 
-char* read_file(char* filename, unsigned long *program_length) {
+char* read_file(char* filename, uint64_t *program_length) {
         FILE *f = fopen(filename, "rb");
         if (!f) {
                 printf("cannot open file: %x\n", errno);
                 return NULL;
         }
         fseek(f, 0, SEEK_END);
-        unsigned long fsize = ftell(f);
+        uint64_t fsize = ftell(f);
         fseek(f, 0, SEEK_SET);
 
         char *string = safe_malloc(fsize + 1);
@@ -63,8 +61,8 @@ signed char parse_digit(char digit) {
         return out;
 }
 
-unsigned long parse_number(char *arr, unsigned long *ind) {
-        unsigned long val = 0;
+uint64_t parse_number(char *arr, uint64_t *ind) {
+        uint64_t val = 0;
         signed char digit;
         while (1) {
                 digit = parse_digit(arr[*ind]);

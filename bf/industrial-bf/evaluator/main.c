@@ -2,11 +2,21 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
+
 #ifndef _WIN32
 #include <unistd.h>
+#include <arpa/inet.h>
+
+#else
+#include "win_byteorder.c"
 #endif
-#include <stdint.h>
+
+#include <errno.h>
+
+#pragma GCC poison long
+#pragma GCC poison int
 
 #include "util.c"
 #include "vector.c"
@@ -21,10 +31,10 @@
 
 #include "config.h"
 
-char* read_file(char *filename, unsigned long *program_length);
+char* read_file(char *filename, uint64_t *program_length);
 void evaluate(char *program, CELL *tape);
 
-int main(int argc, char *argv[]) {
+int32_t main(int32_t argc, char *argv[]) {
         char *filename;
         char addrmap_filename[65];
 
@@ -37,7 +47,7 @@ int main(int argc, char *argv[]) {
                 filename = "test.b";
         }
         
-        unsigned long program_length;
+        uint64_t program_length;
         char *program_raw = (char*) read_file(filename, &program_length);
         if (!program_raw) exit(1);
 
@@ -67,7 +77,7 @@ union command {
                 char cmd;
                 char arg;
         } d;
-        unsigned long raw;
+        uint64_t raw;
 };
 
 const void* jumptable[0x100];
@@ -76,14 +86,14 @@ void evaluate(char program[], CELL tape[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
-        register unsigned long pc = 0;
-        register unsigned long dp = 0;
+        register uint64_t pc = 0;
+        register uint64_t dp = 0;
         register union command inst;
         register char last_page = 0;
 #ifdef ASSERTS
         char *assert_name;
-        unsigned long assert_expected;
-        unsigned long assert_got;
+        uint64_t assert_expected;
+        uint64_t assert_got;
 #endif
 
         jumptable[0] = &&exit;
@@ -105,7 +115,7 @@ void evaluate(char program[], CELL tape[]) {
 #ifdef DEBUGGER
 
 #define NEXT \
-        inst.raw = *(unsigned long*)(&program[pc]); \
+        inst.raw = *(uint64_t*)(&program[pc]); \
         if (inst.d.cmd != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
         goto *(jumptable[inst.d.cmd]);
@@ -113,7 +123,7 @@ void evaluate(char program[], CELL tape[]) {
 #else
 
 #define NEXT \
-        inst.raw = *(unsigned long*)(&program[pc]); \
+        inst.raw = *(uint64_t*)(&program[pc]); \
         goto *(jumptable[inst.d.cmd]);
 
 #endif
@@ -144,7 +154,11 @@ left:
         NEXT
 
 output:
+#ifdef DEBUGGER
+        debugger_out(tape[dp%HOT_TAPE]);
+#else
         putchar(tape[dp%HOT_TAPE]);
+#endif
         pc+=1;
         NEXT
 

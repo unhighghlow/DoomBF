@@ -1,11 +1,11 @@
 // SAFETY: capacity is always greater than or equal to length
 struct vector {
         char *ptr;
-        unsigned long capacity;
-        unsigned long length;
+        uint64_t capacity;
+        uint64_t length;
 };
 
-void vector_init(struct vector *vec, unsigned long capacity) {
+void vector_init(struct vector *vec, uint64_t capacity) {
         if (capacity) {
                 vec->ptr = safe_malloc(capacity);
         } else {
@@ -15,13 +15,13 @@ void vector_init(struct vector *vec, unsigned long capacity) {
         vec->length = 0;
 }
 
-struct vector vector_create(unsigned long capacity) {
+struct vector vector_create(uint64_t capacity) {
         struct vector vec;
         vector_init(&vec, 0);
         return vec;
 }
 
-void vector_extend(struct vector *vec, unsigned long new_capacity) {
+void vector_extend(struct vector *vec, uint64_t new_capacity) {
         if (new_capacity < vec->capacity) return;
 
         vec->capacity = round_up_to_power_of_two(new_capacity);
@@ -34,9 +34,9 @@ void vector_push(struct vector *vec, char val) {
         *(vec->ptr+(vec->length-1)) = val;
 }
 
-void vector_pop(struct vector *vec, long ind) {
+void vector_pop(struct vector *vec, uint64_t ind) {
         vec->length--;
-        for (long i = ind; i < vec->length; i++) {
+        for (uint64_t i = ind; i < vec->length; i++) {
                 *(vec->ptr+i) = *(vec->ptr+i+1);
         }
 }
@@ -50,8 +50,8 @@ void *vector_unwrap(struct vector *vec) {
         return p;
 }
 
-void vector_push_long(struct vector *out, unsigned long item) {
-        for (int i = 0; i < 8; i++) {
+void vector_push_long(struct vector *out, uint64_t item) {
+        for (int32_t i = 0; i < 8; i++) {
                 vector_push(out, item>>(8*(7-i)));
         }
 }

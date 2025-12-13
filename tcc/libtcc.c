@@ -46,6 +46,10 @@ static int nb_states;
 #include "i386-link.c"
 #include "i386-asm.c"
 #endif
+#ifdef TCC_TARGET_BF
+#include "bf-gen.c"
+#include "bf-link.c"
+#endif
 #ifdef TCC_TARGET_ARM
 #include "arm-gen.c"
 #include "arm-link.c"
@@ -70,6 +74,9 @@ static int nb_states;
 #endif
 #ifdef TCC_TARGET_PE
 #include "tccpe.c"
+#endif
+#ifdef TCC_TARGET_BF
+#include "tccbf.c"
 #endif
 #endif /* ONE_SOURCE */
 
@@ -741,7 +748,7 @@ LIBTCCAPI TCCState *tcc_new(void)
 #ifdef CHAR_IS_UNSIGNED
     s->char_is_unsigned = 1;
 #endif
-#ifdef TCC_TARGET_I386
+#if defined(TCC_TARGET_I386) || defined(TCC_TARGET_BF)
     s->seg_size = 32;
 #endif
     /* enable this if you want symbols with leading underscore on windows: */
@@ -808,7 +815,10 @@ LIBTCCAPI TCCState *tcc_new(void)
     tcc_define_symbol(s, "__C67__", NULL);
 #endif
 
-#ifdef TCC_TARGET_PE
+#ifdef TCC_TARGET_BF
+    tcc_define_symbol(s, "_BF", NULL);
+#endif
+#if defined(TCC_TARGET_PE)
     tcc_define_symbol(s, "_WIN32", NULL);
 # ifdef TCC_TARGET_X86_64
     tcc_define_symbol(s, "_WIN64", NULL);
@@ -1050,7 +1060,12 @@ ST_FUNC int tcc_add_file_internal(TCCState *s1, const char *filename, int flags)
             break;
 #endif
         default:
-#ifdef TCC_TARGET_PE
+#ifdef TCC_TARGET_BF
+            ret = bf_load_file(s1, filename, fd);
+            if (ret >= 0)
+                break;
+#endif
+#if defined(TCC_TARGET_PE)
             ret = pe_load_file(s1, filename, fd);
 #else
             /* as GNU ld, consider it is an ld script if not recognized */
@@ -1132,13 +1147,25 @@ ST_FUNC int tcc_add_crt(TCCState *s, const char *filename)
 LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname)
 {
 #if defined TCC_TARGET_PE
-    const char *libs[] = { "%s/%s.def", "%s/lib%s.def", "%s/%s.dll", "%s/lib%s.dll", "%s/lib%s.a", NULL };
+    const char *libs[] = { "%s/%s.def", "%s/lib%s.def", "%s/%s.dll", "%s/lib%s.dll", "%s/lib%s.a", 
+#ifdef TCC_TARGET_BF
+    "%s/%s.b", 
+#endif
+        NULL };
     const char **pp = s->static_link ? libs + 4 : libs;
 #elif defined TCC_TARGET_MACHO
-    const char *libs[] = { "%s/lib%s.dylib", "%s/lib%s.a", NULL };
+    const char *libs[] = { "%s/lib%s.dylib", "%s/lib%s.a", 
+#ifdef TCC_TARGET_BF
+    "%s/%s.b", 
+#endif
+        NULL };
     const char **pp = s->static_link ? libs + 1 : libs;
 #else
-    const char *libs[] = { "%s/lib%s.so", "%s/lib%s.a", NULL };
+    const char *libs[] = { "%s/lib%s.so", "%s/lib%s.a", 
+#ifdef TCC_TARGET_BF
+    "%s/%s.b", 
+#endif
+        NULL };
     const char **pp = s->static_link ? libs + 1 : libs;
 #endif
     while (*pp) {
@@ -1168,7 +1195,12 @@ ST_FUNC void tcc_add_pragma_libs(TCCState *s1)
 
 LIBTCCAPI int tcc_add_symbol(TCCState *s, const char *name, const void *val)
 {
-#ifdef TCC_TARGET_PE
+#ifdef TCC_TARGET_BF
+    /* On x86_64 'val' might not be reachable with a 32bit offset.
+       So it is handled here as if it were in a DLL. */
+    bf_putimport(s, 0, name, (uintptr_t)val);
+#endif
+#if defined(TCC_TARGET_PE)
     /* On x86_64 'val' might not be reachable with a 32bit offset.
        So it is handled here as if it were in a DLL. */
     pe_putimport(s, 0, name, (uintptr_t)val);
@@ -1359,6 +1391,10 @@ static int tcc_set_linker(TCCState *s, const char *option)
             } else if (!strcmp(p, "coff")) {
                 s->output_format = TCC_OUTPUT_FORMAT_COFF;
 #endif
+#ifdef TCC_TARGET_BF
+            } else if (!strcmp(p, "bf")) {
+                s->output_format = TCC_OUTPUT_FORMAT_BF;
+#endif
             } else
                 goto err;
 
@@ -1376,6 +1412,10 @@ static int tcc_set_linker(TCCState *s, const char *option)
             s->section_align = strtoul(p, &end, 16);
         } else if (link_option(option, "soname=", &p)) {
             copy_linker_arg(&s->soname, p, 0);
+#ifdef TCC_TARGET_BF
+        } else if (link_option(option, "preload", &p)) {
+            s->bf_flags |= 0x1;
+#endif
 #ifdef TCC_TARGET_PE
         } else if (link_option(option, "large-address-aware", &p)) {
             s->pe_characteristics |= 0x20;
@@ -1482,7 +1522,8 @@ enum {
     TCC_OPTION_MF,
     TCC_OPTION_x,
     TCC_OPTION_ar,
-    TCC_OPTION_impdef
+    TCC_OPTION_impdef,
+    TCC_OPTION_bf
 };
 
 #define TCC_OPTION_HAS_ARG 0x0001
@@ -1548,6 +1589,9 @@ static const TCCOption tcc_options[] = {
     { "ar", TCC_OPTION_ar, 0},
 #ifdef TCC_TARGET_PE
     { "impdef", TCC_OPTION_impdef, 0},
+#endif
+#ifdef TCC_TARGET_BF
+    { "bf", TCC_OPTION_bf, 0},
 #endif
     { NULL, 0, 0 },
 };
@@ -1795,6 +1839,11 @@ reparse:
         case TCC_OPTION_shared:
             x = TCC_OUTPUT_DLL;
             goto set_output_type;
+#ifdef TCC_OUTPUT_BF
+        case TCC_OPTION_bf:
+            x = TCC_OUTPUT_BF;
+            goto set_output_type;
+#endif
         case TCC_OPTION_soname:
             s->soname = tcc_strdup(optarg);
             break;
