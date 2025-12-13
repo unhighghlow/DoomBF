@@ -414,14 +414,23 @@ void debugger_print_source(uint64_t pc) {
         if (!sourcemap.entries.length) return;
 
         uint64_t count = sourcemap.entries.length/8;
-        uint64_t start;
-        uint64_t ind = get_current_sm_ind(pc);
-        start = ind;
+        uint64_t current;
+        uint64_t start = get_current_sm_ind(pc);
+        current = start;
+        if (start < 1)
+                start = 0;
+        else
+                start -= 1;
 
         printf(FADE "SOURCE: \n" FADE_r);
-        printf("> " B_FG "%s\n" FG_r, read_sm_entry(ind)->text);
-        for (ind++; ind < count && ind < start+4; ind++) {
-                printf("  %s\n", read_sm_entry(ind)->text);
+
+
+        for (uint64_t ind = start; ind < start+count && ind < count; ind++) {
+                if (ind == current)
+                        printf("> " B_FG);
+                else
+                        printf("  ");
+                printf("%s\n" FG_r, read_sm_entry(ind)->text);
         }
 }
 
