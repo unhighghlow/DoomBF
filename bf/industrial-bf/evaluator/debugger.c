@@ -528,39 +528,37 @@ void debugger_print_output() {
 }
 
 void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
-        switch (debugger_state) {
-                case DBG_RUN:
-                        if (reason == BREAK_REASON_INSTRUCTION) {
+        if (reason != BREAK_REASON_BREAKPOINT)
+                switch (debugger_state) {
+                        case DBG_RUN:
                                 if (!program[pc])
                                         debugger_print_output();
                                 return;
-                        }
-                        break;
-                case DBG_STEP:
-                        break;
-                case DBG_EXIT_SEARCH:
-                        if (pc < exit_target)
-                                return;
-                        if (program[pc] == '[') {
-                                exit_search_depth++;
-                        }
-                        if (program[pc] == ']') {
-                                exit_target = pc+8;
-                                if (!exit_search_depth) {
-                                        debugger_state = DBG_EXIT_RUN;
+                        case DBG_STEP:
+                                break;
+                        case DBG_EXIT_SEARCH:
+                                if (pc < exit_target)
+                                        return;
+                                if (program[pc] == '[') {
+                                        exit_search_depth++;
                                 }
-                                exit_search_depth--;
-                        }
-                        return;
-                case DBG_SM_NEXT:
-                        if (get_current_sm_ind(pc) >= sm_next_target)
-                                break;
-                        return;
-                case DBG_EXIT_RUN:
-                        if (pc == exit_target)
-                                break;
-                        return;
-        }
+                                if (program[pc] == ']') {
+                                        exit_target = pc+8;
+                                        if (!exit_search_depth) {
+                                                debugger_state = DBG_EXIT_RUN;
+                                        }
+                                        exit_search_depth--;
+                                }
+                                return;
+                        case DBG_SM_NEXT:
+                                if (get_current_sm_ind(pc) >= sm_next_target)
+                                        break;
+                                return;
+                        case DBG_EXIT_RUN:
+                                if (pc == exit_target)
+                                        break;
+                                return;
+                }
 
         printf(FADE "PROGRAM: " FADE_r "0x%lx\n", pc);
         uint64_t offset = 0;
