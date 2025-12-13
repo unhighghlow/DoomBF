@@ -3,5 +3,7 @@
 #define CELL uint8_t
 
 // #define DEBUGGER
+// #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
+// #define   DEBUGGER_TAPE_VIEW     3
 // #define ASSERTS
 #define CELL_FORMAT_STRING "%2x"

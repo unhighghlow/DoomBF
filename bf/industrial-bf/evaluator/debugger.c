@@ -272,7 +272,7 @@ continue_execution:
 }
 
 void debugger_init() {
-        debugger_state = DBG_STEP;
+        debugger_state = DEBUGGER_DEFAULT_STATE;
         output_len = 0;
 }
 
@@ -593,7 +593,7 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
 
         printf(FADE "TAPE: " FADE_r "0x%lx\n", dp);
         CELL val;
-        for (int32_t offset = -3; offset < 4; offset++) {
+        for (int32_t offset = -DEBUGGER_TAPE_VIEW; offset < DEBUGGER_TAPE_VIEW+1; offset++) {
                 val = tape[(dp+offset)%(PAGE_SIZE*4)];
                 if (!offset)
                         printf(B_FG);
@@ -604,7 +604,7 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
         }
 
         printf("\n");
-        for (int32_t i = 0; i < (TYPOGRAPHIC_CELL_WIDTH+1) * 4 - 2; i++) {
+        for (int32_t i = 0; i < (TYPOGRAPHIC_CELL_WIDTH+1) * (DEBUGGER_TAPE_VIEW+1) - 2; i++) {
                 printf(" ");
         }
         printf("^\n");
