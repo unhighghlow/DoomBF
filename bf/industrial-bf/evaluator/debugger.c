@@ -528,6 +528,7 @@ void debugger_print_output() {
 }
 
 void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64_t pc) {
+        char sourcemap_entry_found = 0;
         if (reason != BREAK_REASON_BREAKPOINT)
                 switch (debugger_state) {
                         case DBG_RUN:
@@ -551,9 +552,16 @@ void debugger_call(char reason, CELL tape[], char program[], uint64_t dp, uint64
                                 }
                                 return;
                         case DBG_SM_NEXT:
-                                if (get_current_sm_ind(pc) >= sm_next_target)
-                                        break;
-                                return;
+                                for (uint64_t i = 0; i < sourcemap.entries.length/8; i++) {
+                                        struct sourcemap_entry* entry = read_sm_entry(i);
+                                        if (entry->ind == pc) {
+                                                sourcemap_entry_found = 1;
+                                                break;
+                                        }
+                                }
+                                if (!sourcemap_entry_found)
+                                        return;
+                                break;
                         case DBG_EXIT_RUN:
                                 if (pc == exit_target)
                                         break;
