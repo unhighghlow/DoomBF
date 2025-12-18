@@ -188,11 +188,16 @@ copy:
         NEXT
 
         CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
-        if (CMD_copy_offset(inst) > 0) {
-                COPY(1, -1)
-        } else {
-                COPY(-1, 1)
+
+        if (val) {
+                if (CMD_copy_offset(inst) > 0) {
+                        COPY(1, -1)
+                } else {
+                        COPY(-1, 1)
+                }
         }
+        pc+=4;
+        NEXT
 
 zero:
         tape[dp%HOT_TAPE] = 0;
