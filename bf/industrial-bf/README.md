@@ -119,6 +119,32 @@ The expected value may be specified after the instruction in hexadecimal:
 
 If the expected value isn't specified, it defaults to 0.
 
+## Internal representation
+
+The following commands are used by the interpreter internally, and can be viewed in the debugger:
+
+```
++-------------------------------+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|===============================|
+| + |VAL|   .   .   .   .   .   .
+| - |VAL|   .   .   .   .   .   .
+| < |VAL|   .   .   .   .   .   .
+| > |VAL|   .   .   .   .   .   .
+| / |VAL|   .   .   .   .   .   .
+| ^ |OFFSET |VAL|   .   .   .   .
+| [ | END INDEX                 |
+| ] | BEGINNING INDEX           |
+| ! | EXPECTED VALUE            |
+| @ | EXPECTED VALUE            |
+| 0 |   .   .   .   .   .   .   .
+| . |   .   .   .   .   .   .   .
+| , |   .   .   .   .   .   .   .
+| # |   .   .   .   .   .   .   .
+|\0 |   .   .   .   .   .   .   .
++-------------------------------+
+```
+
 # bld
 *The ibf preloader*
 ```

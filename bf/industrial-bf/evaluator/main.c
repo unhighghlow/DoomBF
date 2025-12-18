@@ -21,6 +21,7 @@
 #include "util.c"
 #include "vector.c"
 #include "infinite-tape.c"
+#include "command.c"
 
 #ifdef DEBUGGER
 #include "sourcemaps.c"
@@ -72,14 +73,6 @@ int32_t main(int32_t argc, char *argv[]) {
         evaluate(program, tape);
 }
 
-union command {
-        struct {
-                char cmd;
-                char arg;
-        } d;
-        uint64_t raw;
-};
-
 const void* jumptable[0x100];
 
 void evaluate(char program[], CELL tape[]) {
@@ -88,7 +81,7 @@ void evaluate(char program[], CELL tape[]) {
 #endif
         register uint64_t pc = 0;
         register uint64_t dp = 0;
-        register union command inst;
+        register char *inst;
         register char last_page = 0;
 #ifdef ASSERTS
         char *assert_name;
@@ -104,6 +97,9 @@ void evaluate(char program[], CELL tape[]) {
         jumptable['.'] = &&output;
         jumptable['['] = &&loopstart;
         jumptable[']'] = &&loopend;
+        jumptable['/'] = &&divide;
+        jumptable['^'] = &&copy;
+        jumptable['0'] = &&zero;
 #ifdef DEBUGGER
         jumptable['#'] = &&breakinst;
 #endif
@@ -115,40 +111,40 @@ void evaluate(char program[], CELL tape[]) {
 #ifdef DEBUGGER
 
 #define NEXT \
-        inst.raw = *(uint64_t*)(&program[pc]); \
-        if (inst.d.cmd != '#') \
+        inst = &program[pc]; \
+        if (CMD_cmd(inst) != '#') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
-        goto *(jumptable[inst.d.cmd]);
+        goto *(jumptable[CMD_cmd(inst)]);
 
 #else
 
 #define NEXT \
-        inst.raw = *(uint64_t*)(&program[pc]); \
-        goto *(jumptable[inst.d.cmd]);
+        inst = &program[pc]; \
+        goto *(jumptable[CMD_cmd(inst)]);
 
 #endif
 
         NEXT
 
 plus:
-        tape[dp%HOT_TAPE]+=(unsigned char)inst.d.arg + 1;
+        tape[dp%HOT_TAPE]+=CMD_simple_arg_1(inst);
         pc+=2;
         NEXT
 
 minus:
-        tape[dp%HOT_TAPE]-=(unsigned char)inst.d.arg + 1;
+        tape[dp%HOT_TAPE]-=CMD_simple_arg_1(inst);
         pc+=2;
         NEXT
 
 
 right:
-        dp+=((unsigned char)inst.d.arg) + 1;
+        dp+=CMD_simple_arg_1(inst);
         CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
         pc+=2;
         NEXT
 
 left:
-        dp-=((unsigned char)inst.d.arg) + 1;
+        dp-=CMD_simple_arg_1(inst);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=2;
         NEXT
@@ -163,17 +159,44 @@ output:
         NEXT
 
 loopstart:
-        #define endind ntohll(inst.raw)&0x00ffffffffffffff
         if (!tape[dp%HOT_TAPE])
-                pc=endind;
+                pc=CMD_wide_arg(inst);
         pc+=8;
         NEXT
 
 loopend:
-        #define begind ntohll(inst.raw)&0x00ffffffffffffff
         if (tape[dp%HOT_TAPE])
-                pc=begind;
+                pc=CMD_wide_arg(inst);
         pc+=8;
+        NEXT
+
+divide:
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst))
+                while (1) {}
+
+        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
+        pc+=2;
+        NEXT
+copy:
+#define COPY(dir, invdir) \
+        dp += CMD_copy_offset(inst); \
+        CHECK_PAGE_TRANSITION(tape, dir, dp, last_page); \
+        tape[dp%HOT_TAPE] += val; \
+        dp -= CMD_copy_offset(inst); \
+        CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page); \
+        pc+=4; \
+        NEXT
+
+        CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
+        if (CMD_copy_offset(inst) > 0) {
+                COPY(1, -1)
+        } else {
+                COPY(-1, 1)
+        }
+
+zero:
+        tape[dp%HOT_TAPE] = 0;
+        pc+=1;
         NEXT
 
 #ifdef DEBUGGER
@@ -196,7 +219,7 @@ assert_value:
         /* fallthrough */
 
 assert_common:
-        assert_expected = ntohll(inst.raw)&0x00ffffffffffffff;
+        assert_expected = CMD_wide_arg(inst);
         if (assert_expected != assert_got) {
                 printf("assertion failed: %s\n", assert_name);
                 printf("expected: 0x%lx\n", assert_expected);

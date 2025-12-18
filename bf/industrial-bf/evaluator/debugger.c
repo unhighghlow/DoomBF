@@ -483,26 +483,31 @@ void debugger_print_addrmap_vals(CELL tape[], uint64_t dp) {
         }
 }
 
-unsigned char debugger_print_instruction(char inst[]) {
-        char cmd = inst[0];
-        char arg = inst[1];
-        uint64_t full = ntohll(*(uint64_t*)inst);
+unsigned char debugger_print_instruction(char * inst) {
+        char cmd = CMD_cmd(inst);
 
         switch (cmd) {
                 case '+':
                 case '-':
                 case '>':
                 case '<':
-                        printf("%c %3u\n", cmd, (unsigned char)arg + 1);
+                        printf("%c %3u\n", cmd, CMD_simple_arg_1(inst));
                         return 2;
+                case '/':
+                        printf("%c %3d\n", cmd, CMD_simple_arg(inst));
+                        return 2;
+                case '^':
+                        printf("%c %5d %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));
+                        return 4;
                 case '[':
                 case ']':
-                        printf("%c %lx\n", cmd, (full&0x00ffffffffffffff)+8);
+                        printf("%c %lx\n", cmd, CMD_wide_arg(inst)+8);
                         return 8;
                 case '!':
                 case '@':
-                        printf("%c %lx\n", cmd, (full&0x00ffffffffffffff));
+                        printf("%c %lx\n", cmd, CMD_wide_arg(inst));
                         return 8;
+                case '0':
                 case '.':
                 case ',':
                 case '#':
@@ -512,8 +517,8 @@ unsigned char debugger_print_instruction(char inst[]) {
                         printf("end\n");
                         return 0;
                 default:
-                        printf("??? %x %x\n", (unsigned char)cmd, (unsigned char)arg);
-                        return 2;
+                        printf("??? %lx\n", *(uint64_t*)inst);
+                        return 1;
         }
 }
 
@@ -522,7 +527,7 @@ void debugger_print_output() {
 
         printf(FADE "OUTPUT:" FADE_r);
         for (uint32_t i = 0; i < output_len; i++) {
-                printf(" %2x", output_buf[i]);
+                printf(" %2x", ((uint64_t)output_buf[i])&0xff);
         }
         printf("\n       ");
 

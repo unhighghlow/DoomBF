@@ -34,7 +34,7 @@ void sourcemap_end(uint64_t ind) {
         e->ind = ind;
         e->text = vector_unwrap(bt);
 
-        vector_push_long(&sourcemap.entries, (uint64_t)e);
+        vector_push_ex(&sourcemap.entries, uint64_t, (uint64_t)e);
 
         sourcemap.line_ind = -1;
         sourcemap.er_ind = -1;

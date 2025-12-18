@@ -50,8 +50,14 @@ void *vector_unwrap(struct vector *vec) {
         return p;
 }
 
-void vector_push_long(struct vector *out, uint64_t item) {
-        for (int32_t i = 0; i < 8; i++) {
-                vector_push(out, item>>(8*(7-i)));
+#define vector_push_ex(vec, type, val) _vector_push_multibyte(vec, val, sizeof (type))
+
+void _vector_push_multibyte(struct vector *out, uint64_t item, uint8_t len) {
+        for (int32_t i = 0; i < len; i++) {
+                char c = item>>(8*(len-1-i));
+                vector_push(out, c);
         }
 }
+
+#define vector_read_ex(vec, type, ind) (type)_ntoh_custom(*(type*)&(((vec)->ptr)[(ind)*(sizeof(type))]), sizeof(type))
+#define vector_write_ex(vec, type, ind, val) *(type*)&(((vec)->ptr)[(ind)*(sizeof(type))]) = (type)_hton_custom((val), sizeof(type))

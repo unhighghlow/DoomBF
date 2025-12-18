@@ -78,6 +78,36 @@ uint64_t parse_number(char *arr, uint64_t *ind) {
 #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
+uint64_t _ntoh_custom(uint64_t val, uint8_t len) {
+        switch (len) {
+                case 1:
+                        return val;
+                case 2:
+                        return ntohs(val);
+                case 4:
+                        return ntohl(val);
+                case 8:
+                        return ntohll(val);
+        }
+        printf("INTERNAL ERROR: _ntoh_custom(%lx, %d)\n", val, len);
+        abort();
+}
+
+uint64_t _hton_custom(uint64_t val, uint8_t len) {
+        switch (len) {
+                case 1:
+                        return val;
+                case 2:
+                        return htons(val);
+                case 4:
+                        return htonl(val);
+                case 8:
+                        return htonll(val);
+        }
+        printf("INTERNAL ERROR: _hton_custom(%lx, %d)\n", val, len);
+        abort();
+}
+
 char is_comment(char inst) {
         return !(
                 inst == '+'
