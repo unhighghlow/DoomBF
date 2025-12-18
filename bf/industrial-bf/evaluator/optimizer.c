@@ -210,7 +210,7 @@ char process_instruction(char program_in[], uint64_t *ind, struct vector *progra
 #endif
 
 #define CALL_PROC(fn) { \
-        char out = fn(program_in, ind, program_out, ld); \
+        signed char out = fn(program_in, ind, program_out, ld); \
         if (out != -1) { \
                 return out; \
         } \
