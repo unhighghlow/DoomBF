@@ -273,6 +273,7 @@ redo:
     s = tcc_new();
     opt = tcc_parse_args(s, &argc, &argv, 1);
 
+
     if ((n | t) == 0) {
         if (opt == OPT_HELP)
             return printf(help), 1;
