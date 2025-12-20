@@ -10,4 +10,5 @@ bin
 *.VC.opendb
 *.user
 tmp
+ibf
 .ccls-cache
