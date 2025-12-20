@@ -34,15 +34,19 @@ a - load an addrmap file
 q - quit
 ```
 
+If you input an empty line, the last command will be repeated
+
 #### Addressmaps
 
 An addressmap can be used to display the values of variables from specific tape locations. An addressmap line has the following format:
 
 ```
-(mode)(addr)[(length)] (name)
+(mode)(addr)[(length)/(step)] (name)
 ```
 
-Where `length` is optional
+Where `length` and `step` is optional
+
+This address represents every `step`th element in the range of `addr`-`addr+length`
 
 Example:
 ```
@@ -52,6 +56,8 @@ x2 scrap
 
 s3[e] array
 a3[e] array
+
+a4[e/2] stepped_array
 ```
 
 The modes are as follows:

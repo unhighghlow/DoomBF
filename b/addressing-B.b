@@ -40,7 +40,7 @@ Go to address
 Set the address
 6 ++++++ !6
 
-@ BEGIN ALGORITHM
+@# BEGIN ALGORITHM
 
 Increment the address
 
