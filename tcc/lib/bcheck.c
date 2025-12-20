@@ -17,6 +17,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+#ifndef _BF
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -990,3 +992,4 @@ char *__bound_strcpy(char *dst, const char *src)
             __FILE__, __FUNCTION__, p);
     return p;
 }
+#endif

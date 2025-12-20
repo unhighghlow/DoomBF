@@ -748,7 +748,7 @@ LIBTCCAPI TCCState *tcc_new(void)
 #ifdef CHAR_IS_UNSIGNED
     s->char_is_unsigned = 1;
 #endif
-#if defined(TCC_TARGET_I386) || defined(TCC_TARGET_BF)
+#if defined(TCC_TARGET_I386)
     s->seg_size = 32;
 #endif
     /* enable this if you want symbols with leading underscore on windows: */
@@ -1456,7 +1456,9 @@ static int tcc_set_linker(TCCState *s, const char *option)
             if (!strcmp(p, "wince")) {
                 s->pe_subsystem = 9;
 #endif
+#if !defined(TCC_TARGET_BF)
             } else
+#endif
                 goto err;
 #endif
         } else if (ret = link_option(option, "?whole-archive", &p), ret) {

@@ -28,6 +28,7 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  
 */
 
+#ifndef _BF
 #define W_TYPE_SIZE   32
 #define BITS_PER_UNIT 8
 
@@ -107,7 +108,7 @@ union float_long {
 };
 
 /* XXX: we don't support several builtin supports for now */
-#if !defined __x86_64__ && !defined __arm__
+#if !defined __x86_64__ && !defined __arm__ && !defined _BF
 
 /* XXX: use gcc/tcc intrinsic ? */
 #if defined __i386__
@@ -620,3 +621,4 @@ long long __fixxfdi (long double a1)
     return s ? ret : -ret;
 }
 #endif /* !ARM */
+#endif

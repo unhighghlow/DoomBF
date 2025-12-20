@@ -1,6 +1,8 @@
 // =============================================
 // crt1.c
 
+#ifndef _BF
+
 // _UNICODE for tchar.h, UNICODE for API
 #include <tchar.h>
 
@@ -75,5 +77,7 @@ int _runtmain(int argc, /* as tcc passed in */ char **argv)
 #endif
     return _tmain(__argc, __targv, _tenviron);
 }
+
+#endif
 
 // =============================================
