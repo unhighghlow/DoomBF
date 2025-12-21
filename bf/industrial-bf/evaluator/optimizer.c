@@ -119,6 +119,23 @@ uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out
         return 0;
 }
 
+char proc_zero(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+        uint64_t wind = *ind;
+
+        wind++;
+        if (
+                program_in[wind] != '-' &&
+                program_in[wind] != '+'
+        ) return -1;
+
+        if (program_in[++wind] != ']') return -1;
+
+        vector_push(program_out, '0');
+
+        *ind = wind+1;
+        return 0;
+}
+
 uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t wind = *ind;
 
@@ -227,6 +244,7 @@ uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *pro
                         CALL_PROC(proc_unrol_inst);
                 case '[':
 #ifndef DISABLE_ROLLING
+                        CALL_PROC(proc_zero);
                         CALL_PROC(proc_move);
 #endif
                         CALL_PROC(proc_open_loop);
