@@ -99,6 +99,7 @@ void evaluate(uint8_t program[], CELL tape[]) {
         jumptable['>'] = &&right;
         jumptable['<'] = &&left;
         jumptable['.'] = &&output;
+        jumptable[','] = &&input;
         jumptable['['] = &&loopstart;
         jumptable[']'] = &&loopend;
         jumptable['/'] = &&divide;
@@ -160,6 +161,14 @@ output:
 #else
         putchar(tape[dp%HOT_TAPE]);
 #endif
+        pc+=1;
+        NEXT
+
+input:
+        character buf[2];
+        buf[0] = tape[dp%HOT_TAPE];
+        fgets(buf, 2, stdin);
+        tape[dp%HOT_TAPE] = buf[0];
         pc+=1;
         NEXT
 

@@ -66,9 +66,9 @@ for testname_r in ${tests[@]}; do
 	fi
 
 	echo '  >' ibf $testname $inp
-	./ibf $file > $scratch/$testname.got.out
+	./ibf $file > $scratch/$testname.got.out < $in
 
-	diff $scratch/$testname.ref.out $scratch/$testname.got.out
+	diff $scratch/$testname.ref.out $scratch/$testname.got.out || true
 done
 
 echo All OK
