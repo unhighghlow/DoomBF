@@ -491,9 +491,10 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '-':
                 case '>':
                 case '<':
-                        printf("%c %3u\n", cmd, CMD_simple_arg_1(inst));
+                        printf("%c %3u\n", cmd, CMD_rol_arg(inst));
                         return 2;
                 case '/':
+                case '\\':
                         printf("%c %3d\n", cmd, CMD_simple_arg(inst));
                         return 2;
                 case '^':

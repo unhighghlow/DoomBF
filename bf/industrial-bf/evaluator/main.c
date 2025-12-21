@@ -102,6 +102,7 @@ void evaluate(uint8_t program[], CELL tape[]) {
         jumptable['['] = &&loopstart;
         jumptable[']'] = &&loopend;
         jumptable['/'] = &&divide;
+        jumptable['\\'] = &&invdivide;
         jumptable['^'] = &&copy;
         jumptable['0'] = &&zero;
 #ifdef DEBUGGER
@@ -131,24 +132,24 @@ void evaluate(uint8_t program[], CELL tape[]) {
         NEXT
 
 plus:
-        tape[dp%HOT_TAPE]+=CMD_simple_arg_1(inst);
+        tape[dp%HOT_TAPE]+=CMD_rol_arg(inst);
         pc+=2;
         NEXT
 
 minus:
-        tape[dp%HOT_TAPE]-=CMD_simple_arg_1(inst);
+        tape[dp%HOT_TAPE]-=CMD_rol_arg(inst);
         pc+=2;
         NEXT
 
 
 right:
-        dp+=CMD_simple_arg_1(inst);
+        dp+=CMD_rol_arg(inst);
         CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
         pc+=2;
         NEXT
 
 left:
-        dp-=CMD_simple_arg_1(inst);
+        dp-=CMD_rol_arg(inst);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=2;
         NEXT
@@ -181,6 +182,18 @@ divide:
         tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
         pc+=2;
         NEXT
+
+invdivide:
+        tape[dp%HOT_TAPE] = -tape[dp%HOT_TAPE];
+        
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst))
+                while (1) {}
+
+        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
+
+        pc+=2;
+        NEXT
+
 copy:
 #define COPY(dir, invdir) \
         dp += CMD_copy_offset(inst); \

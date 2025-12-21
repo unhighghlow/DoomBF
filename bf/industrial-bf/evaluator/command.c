@@ -6,7 +6,7 @@ uint8_t CMD_simple_arg(uint8_t *inst) {
         return inst[1];
 }
 
-uint16_t CMD_simple_arg_1(uint8_t *inst) {
+uint16_t CMD_rol_arg(uint8_t *inst) {
         return ((uint16_t)inst[1])+1;
 }
 

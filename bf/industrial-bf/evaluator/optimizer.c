@@ -177,17 +177,17 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         if (offset != 0) /* unbalanced loop */
                 return -1;
 
-        /*
-        for (uint32_t i = 0; i < offset_values.length; i++) {
-                printf("@%d | %x: %x\n", i, vector_read_ex(&offset_keys, int16_t, i), offset_values.ptr[i]);
-        } 
-        */
 
         /* output the instructions */
 
-        if (offset_values.ptr[0] != -1) {
+        if (offset_values.ptr[0] < -1) {
                 vector_push(program_out, '/');
                 vector_push(program_out, -offset_values.ptr[0]);
+        }
+
+        if (offset_values.ptr[0] > 1) {
+                vector_push(program_out, '\\');
+                vector_push(program_out, offset_values.ptr[0]);
         }
 
         for (uint32_t i = 1; i < offset_values.length; i++) {
