@@ -1,0 +1,31 @@
+
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+   ^
+#include <stdio.h>
+#define eM(x) *p*x;
+#define eL(x) *(p+x)+=
+#define eK(x) *p*x;
+#define eJ(x) *(p-x)+=
+#define eI(x) *p=x;
+#define eH(x) }
+#define eG(x) while(*p){
+#define eF(x) p+=x;
+#define eE(x) p-=x;
+#define eD(x) putchar(*p);
+#define eC(x) *p-=x;
+#define eB(x) c=getchar();if(c>=0)*p=c;
+#define eA(x) *p+=x;
+char buf[0x10100];
+int main(){
+char *p=buf+127;
+int c;
+return 0;}
+
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+                                                                                               ^
+
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+                                                                                               ^
+
+   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0   0
+                                                                                               ^
