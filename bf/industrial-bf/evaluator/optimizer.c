@@ -119,7 +119,7 @@ uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out
         return 0;
 }
 
-char proc_zero(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t wind = *ind;
 
         wind++;
