@@ -226,7 +226,9 @@ uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *pro
 #endif
                         CALL_PROC(proc_unrol_inst);
                 case '[':
+#ifndef DISABLE_ROLLING
                         CALL_PROC(proc_move);
+#endif
                         CALL_PROC(proc_open_loop);
                 case ']':
                         CALL_PROC(proc_close_loop);
@@ -274,10 +276,5 @@ uint8_t *optimize(string program_in) {
         for (int32_t i = 0; i < 8; i++) {
                 vector_push(&program_out, 0);
         }
-/*
-        for (uint64_t i = 0; i < program_out.length; i++){
-                printf("%lx: %x\n", i, *(program_out.ptr + i));
-        }
-*/
         return vector_unwrap(&program_out);
 }
