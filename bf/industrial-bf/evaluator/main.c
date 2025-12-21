@@ -17,6 +17,10 @@
 
 #pragma GCC poison long
 #pragma GCC poison int
+#pragma GCC poison char
+
+typedef uint8_t* string;
+typedef uint8_t character;
 
 #include "util.c"
 #include "vector.c"
@@ -32,12 +36,12 @@
 
 #include "config.h"
 
-char* read_file(char *filename, uint64_t *program_length);
-void evaluate(char *program, CELL *tape);
+uint8_t* read_file(string filename, uint64_t *program_length);
+void evaluate(string program, CELL *tape);
 
-int32_t main(int32_t argc, char *argv[]) {
-        char *filename;
-        char addrmap_filename[65];
+int32_t main(int32_t argc, string argv[]) {
+        string filename;
+        character addrmap_filename[65];
 
         if (argc > 2) {
                 printf("usage: %s <program>\n", argv[0]);
@@ -49,13 +53,13 @@ int32_t main(int32_t argc, char *argv[]) {
         }
         
         uint64_t program_length;
-        char *program_raw = (char*) read_file(filename, &program_length);
+        string program_raw = (string) read_file(filename, &program_length);
         if (!program_raw) exit(1);
 
 #ifdef DEBUGGER
         sourcemap_init();
 #endif
-        char *program = optimize(program_raw);
+        uint8_t *program = optimize(program_raw);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
         memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
@@ -75,16 +79,16 @@ int32_t main(int32_t argc, char *argv[]) {
 
 const void* jumptable[0x100];
 
-void evaluate(char program[], CELL tape[]) {
+void evaluate(uint8_t program[], CELL tape[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
         register uint64_t pc = 0;
         register uint64_t dp = 0;
-        register char *inst;
-        register char last_page = 0;
+        register uint8_t *inst;
+        register uint8_t last_page = 0;
 #ifdef ASSERTS
-        char *assert_name;
+        string assert_name;
         uint64_t assert_expected;
         uint64_t assert_got;
 #endif

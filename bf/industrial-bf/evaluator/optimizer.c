@@ -7,7 +7,7 @@
 #include <string.h>
 
 struct loop_data {
-        unsigned char sp;
+        uint8_t sp;
         uint64_t stack[256];
 };
 
@@ -27,10 +27,10 @@ struct loop_data {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-char proc_rol_inst(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        char inst = program_in[*ind];
+uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+        uint8_t inst = program_in[*ind];
         unsigned ind1 = *ind;
-        char cur;
+        uint8_t cur;
         uint32_t count = 1;
 
 #ifdef DEBUGGER
@@ -57,17 +57,17 @@ char proc_rol_inst(char program_in[], uint64_t *ind, struct vector *program_out,
                         count++;
         }
         vector_push(program_out, inst);
-        vector_push(program_out, (char)count-1);
+        vector_push(program_out, (uint8_t)count-1);
         return 0;
 }
 
-char proc_unrol_inst(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_unrol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         vector_push(program_out, program_in[*ind]);
         (*ind)++;
         return 0;
 }
 
-char proc_open_loop(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_open_loop(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         LD_PUSH(ld, program_out->length);
         vector_push_ex(
                 program_out,
@@ -78,7 +78,7 @@ char proc_open_loop(char program_in[], uint64_t *ind, struct vector *program_out
         return 0;
 }
 
-char proc_close_loop(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_close_loop(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t start_ind;
         if (*ind & 0xff000000) {
                 printf("error: index overflow\n");
@@ -101,9 +101,9 @@ char proc_close_loop(char program_in[], uint64_t *ind, struct vector *program_ou
         return 0;
 }
 
-char proc_assert(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        char inst = program_in[*ind];
-        signed char digit;
+uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+        uint8_t inst = program_in[*ind];
+        int8_t digit;
         (*ind)++;
         uint64_t val = parse_number(program_in, ind);
         if (val&0xff00000000000000) {
@@ -119,7 +119,7 @@ char proc_assert(char program_in[], uint64_t *ind, struct vector *program_out, s
         return 0;
 }
 
-char proc_move(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t wind = *ind;
 
         struct vector offset_keys;   // short (signed)
@@ -134,7 +134,7 @@ char proc_move(char program_in[], uint64_t *ind, struct vector *program_out, str
         int16_t offset = 0;
 
         while (program_in[++wind/*skipping the loop opening*/] != ']') {
-                char change;
+                int8_t change;
                 int8_t key_found;
                 uint64_t key_ind;
                 switch (program_in[wind]) {
@@ -201,7 +201,7 @@ char proc_move(char program_in[], uint64_t *ind, struct vector *program_out, str
         return 0;
 }
 
-char process_instruction(char program_in[], uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
 #ifdef DEBUGGER
         sourcemap_process(
                 program_in[*ind],
@@ -210,7 +210,7 @@ char process_instruction(char program_in[], uint64_t *ind, struct vector *progra
 #endif
 
 #define CALL_PROC(fn) { \
-        signed char out = fn(program_in, ind, program_out, ld); \
+        int8_t out = fn(program_in, ind, program_out, ld); \
         if (out != -1) { \
                 return out; \
         } \
@@ -242,12 +242,12 @@ char process_instruction(char program_in[], uint64_t *ind, struct vector *progra
         }
 }
 
-char *optimize(char program_in[]) {
+uint8_t *optimize(string program_in) {
         struct vector program_out = vector_create(0);
 
         uint64_t ind = 0;
-        char last_char = 0;
-        char cur_char;
+        character last_char = 0;
+        character cur_char;
         int32_t count = -1;
 
         // Loop optimization
@@ -258,7 +258,7 @@ char *optimize(char program_in[]) {
         printf("constructing program...\n");
 #endif
         while (program_in[ind]) {
-                char out = process_instruction(program_in, &ind, &program_out, &ld);
+                uint8_t out = process_instruction(program_in, &ind, &program_out, &ld);
                 if (out) {
                         exit(out);
                 }

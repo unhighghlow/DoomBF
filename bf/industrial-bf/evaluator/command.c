@@ -1,23 +1,23 @@
-char CMD_cmd(char * inst) {
+uint8_t CMD_cmd(uint8_t *inst) {
         return inst[0];
 }
 
-char CMD_simple_arg(char * inst) {
+uint8_t CMD_simple_arg(uint8_t *inst) {
         return inst[1];
 }
 
-uint16_t CMD_simple_arg_1(char * inst) {
+uint16_t CMD_simple_arg_1(uint8_t *inst) {
         return ((uint16_t)inst[1])+1;
 }
 
-int16_t CMD_copy_offset(char * inst) {
+int16_t CMD_copy_offset(uint8_t *inst) {
         return ntohs(*(uint16_t*)&inst[1]);
 }
 
-signed char CMD_copy_val(char * inst) {
+int8_t CMD_copy_val(uint8_t *inst) {
         return inst[3];
 }
 
-uint64_t CMD_wide_arg(char * inst) {
+uint64_t CMD_wide_arg(uint8_t *inst) {
         return ntohll((*(uint64_t*)&inst[0]))&0x00ffffffffffffff;
 }

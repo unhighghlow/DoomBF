@@ -24,13 +24,13 @@ void *safe_realloc(void *ptr, uint64_t size) {
         return p;
 }
 
-void write_long(char *ptr, uint64_t item) {
+void write_long(uint8_t *ptr, uint64_t item) {
         for (int32_t i = 0; i < 8; i++) {
                 *(ptr+i) = item>>(8*(7-i));
         }
 }
 
-char* read_file(char* filename, uint64_t *program_length) {
+string read_file(string filename, uint64_t *program_length) {
         FILE *f = fopen(filename, "rb");
         if (!f) {
                 printf("cannot open file: %x\n", errno);
@@ -40,7 +40,7 @@ char* read_file(char* filename, uint64_t *program_length) {
         uint64_t fsize = ftell(f);
         fseek(f, 0, SEEK_SET);
 
-        char *string = safe_malloc(fsize + 1);
+        string string = safe_malloc(fsize + 1);
         fread(string, fsize, 1, f);
         fclose(f);
 
@@ -49,8 +49,8 @@ char* read_file(char* filename, uint64_t *program_length) {
         return string;
 }
 
-signed char parse_digit(char digit) {
-        signed char out;
+int8_t parse_digit(uint8_t digit) {
+        int8_t out;
         if (digit >= '0' && digit <= '9') {
                 out = digit-'0';
         } else if (digit >= 'a' && digit <= 'f'){
@@ -61,9 +61,9 @@ signed char parse_digit(char digit) {
         return out;
 }
 
-uint64_t parse_number(char *arr, uint64_t *ind) {
+uint64_t parse_number(string arr, uint64_t *ind) {
         uint64_t val = 0;
-        signed char digit;
+        int8_t digit;
         while (1) {
                 digit = parse_digit(arr[*ind]);
                 if (digit == -1)
@@ -108,7 +108,7 @@ uint64_t _hton_custom(uint64_t val, uint8_t len) {
         abort();
 }
 
-char is_comment(char inst) {
+uint8_t is_comment(character inst) {
         return !(
                 inst == '+'
              || inst == '-'
@@ -128,7 +128,7 @@ char is_comment(char inst) {
         );
 }
 
-char is_whitespace(char inst) {
+uint8_t is_whitespace(character inst) {
         return (
                 inst == ' '
              || inst == '\t'
