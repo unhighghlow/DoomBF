@@ -190,6 +190,7 @@ divide:
                 printf("warning: going into an infinite loop\n");
 #endif
                 while (1) {}
+        }
 
         tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
         pc+=2;
