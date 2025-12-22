@@ -197,12 +197,12 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
 
         /* output the instructions */
 
-        if (offset_values.ptr[0] < -1) {
+        if ((int8_t)offset_values.ptr[0] < -1) {
                 vector_push(program_out, '/');
                 vector_push(program_out, -offset_values.ptr[0]);
         }
 
-        if (offset_values.ptr[0] > 1) {
+        if ((int8_t)offset_values.ptr[0] > 1) {
                 vector_push(program_out, '\\');
                 vector_push(program_out, offset_values.ptr[0]);
         }

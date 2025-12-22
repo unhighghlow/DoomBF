@@ -185,7 +185,10 @@ loopend:
         NEXT
 
 divide:
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst))
+        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst)) {
+#ifdef DEBUGGER
+                printf("warning: going into an infinite loop\n");
+#endif
                 while (1) {}
 
         tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
