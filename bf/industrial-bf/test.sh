@@ -3,7 +3,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-TEST_DIR="../../b/tests"
+TEST_DIR="$(realpath ../../b/tests)"
+IBF="$(realpath ./ibf)"
 
 if [[ ! -z ${BF:-} ]]; then
 	echo -n
@@ -11,16 +12,6 @@ elif which bf > /dev/null 2> /dev/null; then
 	BF=bf;
 elif which brainfuck > /dev/null 2> /dev/null; then
 	BF=brainfuck;
-fi
-
-if [[ ! -z ${CC:-} ]]; then
-	echo -n
-elif which cc > /dev/null 2> /dev/null; then
-	CC=cc;
-else
-	echo No cc found
-	echo Set \$CC to set it\'s path
-        exit 1
 fi
 
 scratch=$(mktemp -d -t tmp.XXXXXXXXXX)
@@ -66,9 +57,16 @@ for testname_r in ${tests[@]}; do
 	fi
 
 	echo '  >' ibf $testname $inp
-	./ibf $file > $scratch/$testname.got.out < $in
 
-	diff $scratch/$testname.ref.out $scratch/$testname.got.out || true
+        pagedir=$(mktemp -d -t tmp.XXXXXXXXXX)
+        pushd $pagedir > /dev/null
+
+	$IBF $file > $scratch/$testname.got.out < $in
+
+        popd > /dev/null
+        rm -rf $pagedir
+
+	diff $scratch/$testname.ref.out $scratch/$testname.got.out
 done
 
 echo All OK
