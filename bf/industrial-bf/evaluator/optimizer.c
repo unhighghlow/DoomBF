@@ -7,12 +7,12 @@
 #include <string.h>
 
 struct loop_data {
-        uint8_t sp;
-        uint64_t stack[256];
+        uint32_t sp;
+        uint64_t stack[0x1000];
 };
 
 #define LD_PUSH(ld, i) \
-        if (ld->sp == 255) { \
+        if (ld->sp == 0xfff) { \
                 printf("error: stack overflow\n"); \
                 return 1; \
         } \
