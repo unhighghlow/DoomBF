@@ -51,6 +51,6 @@ add_subdirectory(tcc)
 set(TCC_EXE "${CMAKE_SOURCE_DIR}/bin/${_TCC_BIN}")  # Path to your tcc.exe, adjust if needed
 
 #add_subdirectory(frontend)
-
+add_subdirectory(test)
 #add_subdirectory(bf/hackablebf)
 #add_subdirectory(bf/industrial-bf)

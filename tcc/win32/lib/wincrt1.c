@@ -1,5 +1,7 @@
 //+---------------------------------------------------------------------------
 
+#ifndef _BF
+
 // _UNICODE for tchar.h, UNICODE for API
 #include <tchar.h>
 
@@ -73,3 +75,4 @@ int _runtwinmain(int argc, /* as tcc passed in */ char **argv)
 #endif
     return go_winmain(__argc > 1 ? __targv[1] : NULL);
 }
+#endif

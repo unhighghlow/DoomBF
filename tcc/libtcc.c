@@ -748,7 +748,7 @@ LIBTCCAPI TCCState *tcc_new(void)
 #ifdef CHAR_IS_UNSIGNED
     s->char_is_unsigned = 1;
 #endif
-#if defined(TCC_TARGET_I386) || defined(TCC_TARGET_BF)
+#if defined(TCC_TARGET_I386)
     s->seg_size = 32;
 #endif
     /* enable this if you want symbols with leading underscore on windows: */
@@ -815,9 +815,9 @@ LIBTCCAPI TCCState *tcc_new(void)
     tcc_define_symbol(s, "__C67__", NULL);
 #endif
 
-#ifdef TCC_TARGET_BF
+#if defined(TCC_TARGET_BF)
     tcc_define_symbol(s, "_BF", NULL);
-#endif
+# endif
 #if defined(TCC_TARGET_PE)
     tcc_define_symbol(s, "_WIN32", NULL);
 # ifdef TCC_TARGET_X86_64
@@ -1061,15 +1061,22 @@ ST_FUNC int tcc_add_file_internal(TCCState *s1, const char *filename, int flags)
 #endif
         default:
 #ifdef TCC_TARGET_BF
-            ret = bf_load_file(s1, filename, fd);
-            if (ret >= 0)
-                break;
+            if (s1->output_format == TCC_OUTPUT_FORMAT_BF)
+            {
+                ret = bf_load_file(s1, filename, fd);
+                if (ret >= 0)
+                    break;
+            }
+            else {
 #endif
 #if defined(TCC_TARGET_PE)
             ret = pe_load_file(s1, filename, fd);
 #else
             /* as GNU ld, consider it is an ld script if not recognized */
             ret = tcc_load_ldscript(s1);
+#endif
+#ifdef TCC_TARGET_BF
+            }
 #endif
             if (ret < 0)
                 tcc_error_noabort("unrecognized file type");
@@ -1196,9 +1203,12 @@ ST_FUNC void tcc_add_pragma_libs(TCCState *s1)
 LIBTCCAPI int tcc_add_symbol(TCCState *s, const char *name, const void *val)
 {
 #ifdef TCC_TARGET_BF
-    /* On x86_64 'val' might not be reachable with a 32bit offset.
-       So it is handled here as if it were in a DLL. */
-    bf_putimport(s, 0, name, (uintptr_t)val);
+    if (s->output_format == TCC_OUTPUT_FORMAT_BF)
+    {
+        /* On x86_64 'val' might not be reachable with a 32bit offset.
+        So it is handled here as if it were in a DLL. */
+        bf_putimport(s, 0, name, (uintptr_t)val);
+    }
 #endif
 #if defined(TCC_TARGET_PE)
     /* On x86_64 'val' might not be reachable with a 32bit offset.
@@ -1393,6 +1403,7 @@ static int tcc_set_linker(TCCState *s, const char *option)
 #endif
 #ifdef TCC_TARGET_BF
             } else if (!strcmp(p, "bf")) {
+                tcc_define_symbol(s, "_BF", NULL);
                 s->output_format = TCC_OUTPUT_FORMAT_BF;
 #endif
             } else
@@ -1445,7 +1456,9 @@ static int tcc_set_linker(TCCState *s, const char *option)
             if (!strcmp(p, "wince")) {
                 s->pe_subsystem = 9;
 #endif
+#if !defined(TCC_TARGET_BF)
             } else
+#endif
                 goto err;
 #endif
         } else if (ret = link_option(option, "?whole-archive", &p), ret) {

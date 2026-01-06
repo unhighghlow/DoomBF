@@ -4,6 +4,22 @@
 
 #include "tcc.h"
 
+#ifndef IMAGE_NT_SIGNATURE
+typedef unsigned char BYTE;
+typedef unsigned short WORD;
+typedef unsigned int DWORD;
+typedef unsigned long long ULONGLONG;
+#endif
+
+ST_FUNC void* bf_tcc_get_symbol_err(TCCState *s, const char *name)
+{
+    return (void*)(uintptr_t)get_elf_sym_addr(s, name, 1);
+}
+
+# define ST_PE_EXPORT 0x10
+# define ST_PE_IMPORT 0x20
+# define ST_PE_STDCALL 0x40
+
 struct bf_info {
     TCCState *s1;
     const char *filename;
@@ -16,6 +32,56 @@ struct bf_info {
     struct section_info *sec_info;
     int sec_count;
 };
+
+/* --------------------------------------------*/
+
+static const char *bf_export_name(TCCState *s1, ElfW(Sym) *sym)
+{
+    const char *name = (char*)symtab_section->link->data + sym->st_name;
+    if (s1->leading_underscore && name[0] == '_' && !(sym->st_other & ST_PE_STDCALL))
+        return name + 1;
+    return name;
+}
+
+static int bf_find_import(TCCState * s1, ElfW(Sym) *sym)
+{
+    char buffer[200];
+    const char *s, *p;
+    int sym_index = 0, n = 0;
+    int a, err = 0;
+
+    do {
+        s = bf_export_name(s1, sym);
+        a = 0;
+        if (n) {
+            /* second try: */
+	    if (sym->st_other & ST_PE_STDCALL) {
+                /* try w/0 stdcall deco (windows API convention) */
+	        p = strrchr(s, '@');
+	        if (!p || s[0] != '_')
+	            break;
+	        strcpy(buffer, s+1)[p-s-1] = 0;
+	    } else if (s[0] != '_') { /* try non-ansi function */
+	        buffer[0] = '_', strcpy(buffer + 1, s);
+	    } else if (0 == memcmp(s, "__imp_", 6)) { /* mingw 2.0 */
+	        strcpy(buffer, s + 6), a = 1;
+	    } else if (0 == memcmp(s, "_imp__", 6)) { /* mingw 3.7 */
+	        strcpy(buffer, s + 6), a = 1;
+	    } else {
+	        continue;
+	    }
+	    s = buffer;
+        }
+        sym_index = find_elf_sym(s1->dynsymtab_section, s);
+        // printf("find (%d) %d %s\n", n, sym_index, s);
+        if (sym_index
+            && ELFW(ST_TYPE)(sym->st_info) == STT_OBJECT
+            && 0 == (sym->st_other & ST_PE_IMPORT)
+            && 0 == a
+            ) err = -1, sym_index = 0;
+    } while (0 == sym_index && ++n < 2);
+    return n == 2 ? err : sym_index;
+}
 
 static void bf_add_runtime(TCCState *s1, struct bf_info *bf)
 {
@@ -69,7 +135,7 @@ static void bf_set_options(TCCState * s1, struct bf_info *bf)
     bf->subsystem = 2;
 }
 
-#if 0
+#ifndef IMAGE_NT_SIGNATURE
 enum {
     sec_text = 0,
     sec_data ,
@@ -349,7 +415,7 @@ static int bf_check_symbols(struct bf_info *bf)
 
         if (sym->st_shndx == SHN_UNDEF) {
 
-            int imp_sym = pe_find_import(bf->s1, sym);
+            int imp_sym = bf_find_import(bf->s1, sym);
 
             if (imp_sym <= 0)
             {
@@ -504,7 +570,7 @@ ST_FUNC int bf_output_file(TCCState * s1, const char *filename)
             }
         }
         bf.start_addr = (DWORD)
-            ((uintptr_t)tcc_get_symbol_err(s1, bf.start_symbol)
+            ((uintptr_t)bf_tcc_get_symbol_err(s1, bf.start_symbol)
                 - bf.imagebase);
         //if (s1->nb_errors)
         //    ret = -1;

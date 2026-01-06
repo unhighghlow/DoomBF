@@ -1,4 +1,5 @@
 //+---------------------------------------------------------------------------
+#ifndef _BF
 
 #include <windows.h>
 
@@ -11,3 +12,4 @@ BOOL WINAPI _dllstart(HINSTANCE hDll, DWORD dwReason, LPVOID lpReserved)
 	return bRet;
 }
 
+#endif

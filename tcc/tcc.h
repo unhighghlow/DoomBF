@@ -314,7 +314,7 @@ extern long double strtold (const char *__nptr, char **__endptr);
 /* include the target specific definitions */
 
 #define TARGET_DEFS_ONLY
-#ifdef TCC_TARGET_I386
+#ifdef TCC_TARGET_BF
 # include "bf-gen.c"
 # include "bf-link.c"
 #endif

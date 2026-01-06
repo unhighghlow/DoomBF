@@ -56,6 +56,14 @@
 # define IMAGE_FILE_MACHINE 0x014C
 # define RSRC_RELTYPE 7 /* DIR32NB */
 
+#elif defined TCC_TARGET_BF
+# define ADDR3264 DWORD
+# define PE_IMAGE_REL IMAGE_REL_BASED_HIGHLOW
+# define REL_TYPE_DIRECT R_386_32
+# define R_XXX_THUNKFIX R_386_32
+# define R_XXX_RELATIVE R_386_RELATIVE
+# define IMAGE_FILE_MACHINE 0x014C
+# define RSRC_RELTYPE 7 /* DIR32NB */
 #endif
 
 #ifndef IMAGE_NT_SIGNATURE
@@ -534,7 +542,7 @@ static int pe_write(struct pe_info *pe)
     0x00F0, /*WORD    SizeOfOptionalHeader; */
     0x022F  /*WORD    Characteristics; */
 #define CHARACTERISTICS_DLL 0x222E
-#elif defined(TCC_TARGET_I386)
+#elif defined(TCC_TARGET_I386) || defined(TCC_TARGET_BF)
     0x00E0, /*WORD    SizeOfOptionalHeader; */
     0x030F  /*WORD    Characteristics; */
 #define CHARACTERISTICS_DLL 0x230E

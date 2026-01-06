@@ -506,6 +506,9 @@ static void asm_parse_directive(TCCState *s1, int global)
 #ifdef TCC_TARGET_X86_64
 	size = 8;
 	goto asm_data;
+#elif TCC_TARGET_BF
+	size = 4;
+	goto asm_data;
 #else
         next();
         for(;;) {
