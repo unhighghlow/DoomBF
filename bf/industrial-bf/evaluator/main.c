@@ -274,6 +274,7 @@ zero:
 
 #ifdef DEBUGGER
 breakinst:
+        if (!option_d) { NEXT }
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
         pc+=1;
         NEXT
