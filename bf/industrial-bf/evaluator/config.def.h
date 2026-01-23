@@ -7,7 +7,7 @@
 // #define DEBUGGER /* Enables the -d option
 //                     Disabled by default because it
 //                     slows down execution even if -d
-//                     isn't used (mandelbrot 12s->15s)
+//                     isn't used (mandelbrot 12s->15s) */
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
 // #define   DEBUGGER_TAPE_VIEW     3
 #define ASSERTS
