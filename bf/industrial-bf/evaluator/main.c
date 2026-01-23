@@ -93,7 +93,7 @@ if (option_d) {
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
         memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
-        load_page(tape, PAGE_COUNT);
+        load_page(tape, PAGE_COUNT-1);
         load_page(tape, 0);
         load_page(tape, 1);
 
