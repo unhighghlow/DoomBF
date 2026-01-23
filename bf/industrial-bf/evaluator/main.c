@@ -53,7 +53,7 @@ void usage(string exec) {
 int32_t main(int32_t argc, string argv[]) {
         string filename;
         string addrmap_filename;
-        character opt;
+        unsigned char opt;
 
         while ((opt = getopt(argc, argv, "da")) != 0xff) {
                 switch (opt) {
