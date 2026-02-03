@@ -1,7 +1,7 @@
 .vs
 .vscode
-build/**
-buildx/**
+build
+buildx
 .build*
 .DS_Store
 bin
