@@ -1,5 +1,5 @@
 ibf: evaluator/
-	${CC} evaluator/main.c -g -O3 -o ibf ${CCFLAGS}
+	${CC} evaluator/main.c -g -O3 -o ibf -llightning ${CCFLAGS}
 
 bld: loader/
 	${CC} loader/loader.c -g -O3 -o bld ${CCFLAGS}

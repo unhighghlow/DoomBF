@@ -18,8 +18,10 @@
 
 #include <errno.h>
 
-#pragma GCC poison long
-#pragma GCC poison int
+#include <lightning.h>
+
+//#pragma GCC poison long
+//#pragma GCC poison int
 
 typedef char* string;
 typedef char character;
@@ -38,6 +40,7 @@ uint8_t option_a;
 #endif
 
 #include "optimizer.c"
+#include "jit.c"
 
 #include "config.h"
 
@@ -106,7 +109,8 @@ if (option_d) {
 }
 #endif
 
-        evaluate(program, tape);
+        //evaluate(program, tape);
+        jit_run(program, tape);
 }
 
 const void* jumptable[0x100];
