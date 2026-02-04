@@ -5,7 +5,7 @@ typedef int (*pifi)(uint8_t*);
 
 void jit_run(uint8_t program[], CELL tape[]) {
   jit_node_t  *tape_in;
-  pifi         incr;
+  pifi         run;
   uint64_t     pc = 0;
   uint8_t     *inst;
 
@@ -28,15 +28,15 @@ void jit_run(uint8_t program[], CELL tape[]) {
   while (*(inst = &program[pc])) {
           switch (CMD_cmd(inst)) {
                   case '+':
-                          jit_ldr(JIT_R0, JIT_V1);
+                          jit_ldr_uc(JIT_R0, JIT_V1);
                           jit_addi(JIT_R0, JIT_R0, CMD_rol_arg(inst));
-                          jit_str(JIT_V1, JIT_R0);
+                          jit_str_c(JIT_V1, JIT_R0);
                           pc+=2;
                           break;
                   case '-':
-                          jit_ldr(JIT_R0, JIT_V1);
+                          jit_ldr_uc(JIT_R0, JIT_V1);
                           jit_subi(JIT_R0, JIT_R0, CMD_rol_arg(inst));
-                          jit_str(JIT_V1, JIT_R0);
+                          jit_str_c(JIT_V1, JIT_R0);
                           pc+=2;
                           break;
                   case '>':
@@ -52,7 +52,7 @@ void jit_run(uint8_t program[], CELL tape[]) {
                                   printf("error: stack overflow\n");
                                   exit(1);
                           }
-                          jit_ldr(JIT_R0, JIT_V1);
+                          jit_ldr_uc(JIT_R0, JIT_V1);
                           jump = jit_beqi(JIT_R0, 0);
                           backward_stack[sp] = jit_forward();
                           jit_patch_at(jump, backward_stack[sp]);
@@ -67,31 +67,29 @@ void jit_run(uint8_t program[], CELL tape[]) {
                                   exit(1);
                           }
                           sp--;
-                          jit_ldr(JIT_R0, JIT_V1);
+                          jit_ldr_uc(JIT_R0, JIT_V1);
                           jump = jit_bnei(JIT_R0, 0);
                           jit_patch_at(jump, forward_stack[sp]);
 
                           jit_link(backward_stack[sp]);
+                          pc+=8;
+                          break;
                   case '.':
-                          jit_ldr(JIT_R0, JIT_V1);
+                          jit_ldr_uc(JIT_R0, JIT_V1);
                           jit_prepare();
-                          jit_pushargi((jit_word_t)"%c(%d)");
+                          jit_pushargi((jit_word_t)"%c");
                           jit_ellipsis();
                           jit_pushargr(JIT_R0);
-                          jit_pushargr(JIT_R0);
                           jit_finishi(printf);
-                          jit_retr(JIT_R0);
                           pc+=1;
                           break;
           }
   }
 
-  incr = jit_emit();
+  run = jit_emit();
   jit_clear_state();
-  jit_disassemble();
 
-  /* call the generated code, passing 5 as an argument */
-  printf("out: %d\n", incr(tape));
+  run(tape);
 
   jit_destroy_state();
   finish_jit();
