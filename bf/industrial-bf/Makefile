@@ -4,8 +4,14 @@ else
 	AVX2 = "-mavx2"
 endif
 
+ifeq ($(origin IBF_JIT),undefined)
+	LIGHTNING = ""
+else
+	LIGHTNING = "-llightning"
+endif
+
 ibf: evaluator/
-	${CC} evaluator/main.c -g -O3 ${AVX2} -o ibf ${CCFLAGS}
+	${CC} evaluator/main.c -g -O3 ${AVX2} ${LIGHTNING} -o ibf ${CCFLAGS}
 
 bld: loader/
 	${CC} loader/loader.c -g -O3 -o bld ${CCFLAGS}
