@@ -22,8 +22,10 @@ void jit_run(uint8_t program[], CELL tape[]) {
   jit_prolog();
   tape_in = jit_arg();
   jit_getarg(JIT_V1, tape_in);
+  jit_movi(JIT_V2, 0);
   
   /* V1 -- data pointer */
+  /* V2 -- always zero */
 
   while (*(inst = &program[pc])) {
           switch (CMD_cmd(inst)) {
@@ -74,6 +76,18 @@ void jit_run(uint8_t program[], CELL tape[]) {
                           jit_link(backward_stack[sp]);
                           pc+=8;
                           break;
+                  case '^':
+                          jit_ldr_uc(JIT_R0, JIT_V1);
+                          jit_ldxi_c(JIT_R1, JIT_V1, CMD_copy_offset(inst));
+                          jit_muli(JIT_R0, JIT_R0, CMD_copy_val(inst));
+                          jit_addr(JIT_R0, JIT_R0, JIT_R1);
+                          jit_stxi_c(CMD_copy_offset(inst), JIT_V1, JIT_R0);
+                          pc+=4;
+                          break;
+                  case '0':
+                          jit_str_c(JIT_V1, JIT_V2);
+                          pc+=1;
+                          break;
                   case '.':
                           jit_ldr_uc(JIT_R0, JIT_V1);
                           jit_prepare();
@@ -83,6 +97,9 @@ void jit_run(uint8_t program[], CELL tape[]) {
                           jit_finishi(printf);
                           pc+=1;
                           break;
+                  default:
+                          printf("unknown instruction: %c\n", CMD_cmd(inst));
+                          exit(1);
           }
   }
 
