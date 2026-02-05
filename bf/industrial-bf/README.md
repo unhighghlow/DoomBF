@@ -145,6 +145,7 @@ The instructions are as follows:
 | @ | EXPECTED VALUE            | Terminate if the data pointer is not EXPECTED VALUE
 | 0 |   .   .   .   .   .   .   . Set the current cell to zero
 | . |   .   .   .   .   .   .   . Output the current cell
+| , |   .   .   .   .   .   .   . Read a byte into the current cell. Do not change in EOF
 | # |   .   .   .   .   .   .   . Breakpoint (see Debugger)
 |\0 |   .   .   .   .   .   .   . Terminate the program (only appears at the end)
 +-------------------------------+
