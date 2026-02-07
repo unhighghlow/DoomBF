@@ -53,6 +53,9 @@
 #include "riscv64-gen.c"
 #include "riscv64-link.c"
 #include "riscv64-asm.c"
+#elif defined(TCC_TARGET_BF)
+#include "bf-gen.c"
+#include "bf-link.c"
 #else
 #error unknown target
 #endif
@@ -61,6 +64,9 @@
 #endif
 #ifdef TCC_TARGET_MACHO
 #include "tccmacho.c"
+#endif
+#ifdef TCC_TARGET_BF
+#include "tccbf.c"
 #endif
 #endif /* ONE_SOURCE */
 
@@ -1306,6 +1312,8 @@ LIBTCCAPI int tcc_add_library(TCCState *s, const char *libraryname)
         "%s/lib%s.dylib", "%s/lib%s.tbd",
 #elif defined TARGETOS_OpenBSD
         "%s/lib%s.so.*",
+#elif defined TCC_TARGET_BF
+        "%s/lib%s.bl",
 #else
         "%s/lib%s.so",
 #endif
