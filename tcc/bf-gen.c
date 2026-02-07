@@ -54,12 +54,61 @@ enum {
 
 #define USING_GLOBALS
 #include "tcc.h"
+
+ST_DATA const char * const target_machine_defs =
+    "__brainfuck\0"
+    ;
+
+ST_FUNC void o(unsigned int c)
+{
+    int ind1 = ind + 4;
+    if (nocode_wanted)
+        return;
+    if (ind1 > cur_text_section->data_allocated)
+        section_realloc(cur_text_section, ind1);
+    write32le(cur_text_section->data + ind, c);
+    ind = ind1;
+}
+
+ST_FUNC void oCHAR(char c)
+{
+    int ind1 = ind + 1;
+    if (nocode_wanted)
+        return;
+    if (ind1 > cur_text_section->data_allocated)
+        section_realloc(cur_text_section, ind1);
+    cur_text_section->data[ind] = c;
+    ind = ind1;
+}
+
+ST_FUNC void oSTR(char *s)
+{
+    char chr;
+    while ((chr = *(s++))) {
+        oCHAR(chr);
+    }
+}
+
+ST_FUNC void oTO(int reg)
+{
+    while (reg--) {
+        oCHAR('>');
+    }
+}
+
+ST_FUNC void oFROM(int reg)
+{
+    while (reg--) {
+        oCHAR('<');
+    }
+}
+
 // Patch all branches in list pointed to by t to branch to a:
 ST_FUNC void gsym_addr(int t_, int a_)
 {
     uint32_t t = t_;
     uint32_t a = a_;
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
     while (t) {
         unsigned char *ptr = cur_text_section->data + t;
         uint32_t next = read32le(ptr);
@@ -73,46 +122,68 @@ ST_FUNC void gsym_addr(int t_, int a_)
 
 ST_FUNC void load(int r, SValue *sv)
 {
-    tcc_error("implement me");
+    int fr = sv->r;
+    int v = fr & VT_VALMASK;
+    char fc = sv->c.i;
+    if (v == VT_CONST) {
+        if (fr & VT_SYM)
+          tcc_error("unimp: load(sym)");
+        if (is_float(sv->type.t))
+          tcc_error("unimp: load(float)");
+        if (fc != sv->c.i)
+          tcc_error("unimp: load(very large const)");
+        if (((unsigned)fc + (1 << 11)) >> 12)
+          tcc_error("unimp: load(large const) (0x%x)", fc);
+
+        oTO(r);
+        oSTR("[-]");
+        while (fc--) {
+                oCHAR('+');
+        }
+        oFROM(r);
+    } else
+      tcc_error("unimp: load(non-const)");
 }
 
 ST_FUNC void store(int r, SValue *sv)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gfunc_call(int nb_args)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
+
 ST_FUNC void gfunc_prolog(Sym *func_sym)
 {
-    tcc_error("implement me");
+    oSTR("prolog");
 }
 ST_FUNC void gen_va_start(void)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC void gen_va_arg(CType *t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret,
                        int *align, int *regsize)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC void gfunc_return(CType *func_type)
 {
-    tcc_error("implement me");
+    oSTR("return");
+    vtop--;
 }
 ST_FUNC void gfunc_epilog(void)
 {
-    tcc_error("implement me");
+    oSTR("epilog");
 }
 ST_FUNC void gen_fill_nops(int bytes)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
     if ((bytes & 3))
       tcc_error("alignment of code section not multiple of 4");
 }
@@ -120,75 +191,75 @@ ST_FUNC void gen_fill_nops(int bytes)
 // Generate forward branch to label:
 ST_FUNC int gjmp(int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 // Generate branch to known address:
 ST_FUNC void gjmp_addr(int a)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC int gjmp_cond(int op, int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC int gjmp_append(int n, int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC int gtst(int inv, int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC void gen_opi(int op)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_opf(int op)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC void gen_cvt_sxtw(void)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_itof(int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_ftoi(int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_ftof(int t)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void ggoto(void)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 ST_FUNC void gen_vla_sp_save(int addr)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_vla_sp_restore(int addr)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_vla_alloc(CType *type, int align)
 {
-    tcc_error("implement me");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 #endif
 

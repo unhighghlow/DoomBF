@@ -118,7 +118,7 @@ DEF-c67            = -DTCC_TARGET_C67 -w # disable warnigs
 DEF-x86_64-FreeBSD = $(DEF-x86_64) -DTARGETOS_FreeBSD
 DEF-x86_64-NetBSD  = $(DEF-x86_64) -DTARGETOS_NetBSD
 DEF-x86_64-OpenBSD = $(DEF-x86_64) -DTARGETOS_OpenBSD
-DEF-bf             = -DTCC_TARGET_BF
+DEF-bf             = -DTCC_TARGET_BF -DCONFIG_TCC_PREDEFS
 
 ifeq ($(INCLUDED),no)
 # --------------------------------------------------------------------------
