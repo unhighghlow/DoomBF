@@ -1017,6 +1017,7 @@ static void asm_parse_directive(TCCState *s1, int global)
 
 
 /* assemble a file */
+#ifndef TCC_TARGET_BF
 static int tcc_assemble_internal(TCCState *s1, int do_preprocess, int global)
 {
     int opcode;
@@ -1075,6 +1076,34 @@ static int tcc_assemble_internal(TCCState *s1, int do_preprocess, int global)
     parse_flags = saved_parse_flags;
     return 0;
 }
+#else
+/* Brainfuck has a *special* assembly syntax */
+ST_FUNC void _bf_asm_out_char(char c)
+{
+    int ind1 = ind + 1;
+    if (nocode_wanted)
+        return;
+    if (ind1 > cur_text_section->data_allocated)
+        section_realloc(cur_text_section, ind1);
+    cur_text_section->data[ind] = c;
+    ind = ind1;
+}
+
+static int tcc_assemble_internal(TCCState *s1, int do_preprocess, int global)
+{
+    char *s;
+    char chr;
+    while (1) {
+        next();
+        if (tok == TOK_EOF) break;
+        s = get_tok_str(tok, &tokc);
+        while ((chr = *(s++))) {
+            _bf_asm_out_char(chr);
+        }
+    }
+    return 0;
+}
+#endif
 
 /* Assemble the current file */
 ST_FUNC int tcc_assemble(TCCState *s1, int do_preprocess)

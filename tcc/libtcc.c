@@ -56,6 +56,7 @@
 #elif defined(TCC_TARGET_BF)
 #include "bf-gen.c"
 #include "bf-link.c"
+#include "bf-asm.c"
 #else
 #error unknown target
 #endif
