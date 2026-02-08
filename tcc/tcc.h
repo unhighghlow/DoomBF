@@ -1791,6 +1791,10 @@ ST_FUNC void tcc_add_macos_sdkpath(TCCState* s);
 ST_FUNC char* macho_tbd_soname(int fd);
 #endif
 #endif
+/* ------------ tccbf.c ----------------- */
+#ifdef TCC_TARGET_BF
+ST_FUNC int bf_output_file(TCCState * s1, const char *filename);
+#endif
 /* ------------ tccrun.c ----------------- */
 #ifdef TCC_IS_NATIVE
 #ifdef CONFIG_TCC_STATIC
