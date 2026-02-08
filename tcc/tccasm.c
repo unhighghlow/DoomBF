@@ -1101,6 +1101,7 @@ static int tcc_assemble_internal(TCCState *s1, int do_preprocess, int global)
             _bf_asm_out_char(chr);
         }
     }
+    _bf_asm_out_char('\n');
     return 0;
 }
 #endif

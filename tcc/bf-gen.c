@@ -15,18 +15,11 @@
    assumptions on it). */
 #define RC_INT     0x0001 /* generic integer register */
 #define RC_FLOAT   0x0002 /* generic float register */
-#define RC_R0      0x0004
-#define RC_R1      0x0008 
-#define RC_R2      0x0010
-#define RC_R3      0x0020
-#define RC_R4      0x0040
-#define RC_R5      0x0080
-#define RC_R6      0x0100
-#define RC_R7      0x0200
+#define RC_R(n)    (0x4 << n)
 
-#define RC_IRET    RC_R1 /* function return: integer register */
-#define RC_IRE2    RC_R2 /* function return: second integer register */
-#define RC_FRET    RC_R1 /* function return: float register */
+#define RC_IRET    RC_R(1) /* function return: integer register */
+#define RC_IRE2    RC_R(2) /* function return: second integer register */
+#define RC_FRET    RC_R(1) /* function return: float register */
 
 /* pretty names for the registers */
 enum {
@@ -60,19 +53,24 @@ enum {
 #include "tcc.h"
 
 ST_DATA const int reg_classes[NB_REGS] = {
-  RC_INT | RC_R1,
-  RC_INT | RC_R2,
-  RC_INT | RC_R3,
-  RC_INT | RC_R4,
-  RC_INT | RC_R5,
-  RC_INT | RC_R6,
-  RC_INT | RC_R7
+  RC_INT | RC_R(0),
+  RC_INT | RC_R(1),
+  RC_INT | RC_R(2),
+  RC_INT | RC_R(3),
+  RC_INT | RC_R(4),
+  RC_INT | RC_R(5),
+  RC_INT | RC_R(6),
+  RC_INT | RC_R(7)
 };
 
 ST_DATA const char * const target_machine_defs =
     "__brainfuck\0"
     ;
 
+static int cur_block_ind = 0;
+static int jump_generated = 0;
+
+/* Output an unsigned 32-bit integer */
 ST_FUNC void o(unsigned int c)
 {
     int ind1 = ind + 4;
@@ -84,6 +82,7 @@ ST_FUNC void o(unsigned int c)
     ind = ind1;
 }
 
+/* Output a single character */
 ST_FUNC void oCHAR(char c)
 {
     int ind1 = ind + 1;
@@ -95,6 +94,16 @@ ST_FUNC void oCHAR(char c)
     ind = ind1;
 }
 
+/* Output a relocatable value.
+ * It is converted to a sequence of pluses
+ * in tccbf.c : bf_output_file */
+ST_FUNC void oRELOC(unsigned int c)
+{
+    oCHAR('\0');
+    o(c);
+}
+
+/* Output a string */
 ST_FUNC void oSTR(char *s)
 {
     char chr;
@@ -103,6 +112,29 @@ ST_FUNC void oSTR(char *s)
     }
 }
 
+/* Output a comment (remark), replacing
+ * all instructions with `_`
+ *
+ * Does nothing if do_debug is off*/
+ST_FUNC void oREM(char *s)
+{
+    if (!(TCC_STATE_VAR(do_debug))) return;
+    char chr;
+    while ((chr = *(s++))) {
+        if (chr == '+' || chr == '-' ||
+            chr == '<' || chr == '>' ||
+            chr == '[' || chr == ']' ||
+            chr == '.' || chr == ',') {
+            oCHAR('_');
+            continue;
+        }
+        oCHAR(chr);
+    }
+    oCHAR(' ');
+}
+
+/* Generate the movement from the base
+ * address to a register */
 ST_FUNC void oTO(int reg)
 {
     reg++;
@@ -112,6 +144,8 @@ ST_FUNC void oTO(int reg)
     }
 }
 
+/* Generate the return from a register
+ * to the default location */
 ST_FUNC void oFROM(int reg)
 {
     reg++;
@@ -119,6 +153,45 @@ ST_FUNC void oFROM(int reg)
         oCHAR('<');
         reg--;
     }
+}
+
+/* Output `x` pluses */
+ST_FUNC void oSET(int x)
+{
+    while (x) {
+        oCHAR('+');
+        x--;
+    }
+}
+
+/* Generate the beginning of a block */
+ST_FUNC void oBBEG()
+{
+    /* Block indexing starts at 1,
+     * so we increment before we
+     * generate the block */
+    cur_block_ind++;
+    jump_generated = 0;
+
+    oREM("block");
+    // next  'block_id   0       0
+    oSTR("->[-]+>[-]+<<");
+    // next  'block_id   1       1
+    oSTR("[>->-<]>[>-]<[->\n");
+    // next   block_id   0      '0
+}
+
+/* Generate the ending of a block */
+ST_FUNC void oBEND()
+{
+    oREM("end");
+    if (!jump_generated) {
+        oREM("&jump");
+        oSTR("<<<");
+        oSET(cur_block_ind + 1);
+        oSTR(">>>");
+    }
+    oSTR("<]<\n");
 }
 
 // Patch all branches in list pointed to by t to branch to a:
@@ -155,9 +228,7 @@ ST_FUNC void load(int r, SValue *sv)
 
         oTO(r);
         oSTR("[-]");
-        while (fc--) {
-                oCHAR('+');
-        }
+        oSET(fc);
         oFROM(r);
     } else
       tcc_error("unimp: load(non-const)");
@@ -168,14 +239,54 @@ ST_FUNC void store(int r, SValue *sv)
     /* XXX: Implement me */
 }
 
+static void gcall(void)
+{
+    if ((vtop->r & (VT_VALMASK | VT_LVAL)) == VT_CONST &&
+        ((vtop->r & VT_SYM) && vtop->c.i == (int)vtop->c.i)) {
+
+        oREM("call");
+        oSTR("<<<[-]");
+
+        /* constant symbolic case -> simple relocation */
+        greloca(cur_text_section, vtop->sym, ind,
+                R_RISCV_CALL_PLT, (int)vtop->c.i);
+
+        oRELOC(1);
+        oSTR(">>>\n");
+    } else {
+        tcc_error("unimp: indirect call");
+    }
+}
+
 ST_FUNC void gfunc_call(int nb_args)
 {
-    tcc_error("implement me: %s", __FUNCTION__);
+    int i, align, size, aireg;
+    aireg = 0;
+    for (i = 0; i < nb_args; i++) {
+        size = type_size(&vtop[-i].type, &align);
+        if (size > 8 || ((vtop[-i].type.t & VT_BTYPE) == VT_STRUCT)
+            || is_float(vtop[-i].type.t))
+          tcc_error("unimp: call arg %d wrong type", nb_args - i);
+        if (aireg >= 8)
+          tcc_error("unimp: too many register args");
+        vrotb(i+1);
+        gv(RC_R(aireg));
+        vrott(i+1);
+        aireg++;
+    }
+    vrotb(nb_args + 1);
+    gcall();
+
+    jump_generated = 1;
+    oBEND();
+    oBBEG();
+
+    vtop -= nb_args + 1;
 }
 
 ST_FUNC void gfunc_prolog(Sym *func_sym)
 {
-    oSTR("prolog");
+    oBBEG();
 }
 ST_FUNC void gen_va_start(void)
 {
@@ -192,12 +303,12 @@ ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret,
 }
 ST_FUNC void gfunc_return(CType *func_type)
 {
-    oSTR("return");
+    oSTR("return\n");
     vtop--;
 }
 ST_FUNC void gfunc_epilog(void)
 {
-    oSTR("epilog");
+    oBEND();
 }
 ST_FUNC void gen_fill_nops(int bytes)
 {
