@@ -4,7 +4,7 @@
 #define PTR_SIZE 4
 
 /* Number of registers available to allocator */
-#define NB_REGS 7 // R1 - R7
+#define NB_REGS 8 // R0 - R7
 
 /* long double size and alignment, in bytes */
 #define LDOUBLE_SIZE  16
@@ -15,13 +15,14 @@
    assumptions on it). */
 #define RC_INT     0x0001 /* generic integer register */
 #define RC_FLOAT   0x0002 /* generic float register */
-#define RC_R1      0x0004
-#define RC_R2      0x0008 
-#define RC_R3      0x0010
-#define RC_R4      0x0020
-#define RC_R5      0x0040
-#define RC_R6      0x0080
-#define RC_R7      0x0100
+#define RC_R0      0x0004
+#define RC_R1      0x0008 
+#define RC_R2      0x0010
+#define RC_R3      0x0020
+#define RC_R4      0x0040
+#define RC_R5      0x0080
+#define RC_R6      0x0100
+#define RC_R7      0x0200
 
 #define RC_IRET    RC_R1 /* function return: integer register */
 #define RC_IRE2    RC_R2 /* function return: second integer register */
@@ -29,7 +30,8 @@
 
 /* pretty names for the registers */
 enum {
-    TREG_R1  = 1,
+    TREG_R0  = 0,
+    TREG_R1,
     TREG_R2,
     TREG_R3,
     TREG_R4,
@@ -50,10 +52,22 @@ enum {
 /* maximum alignment (for aligned attribute support) */
 #define MAX_ALIGN     8
 
+#define CHAR_IS_UNSIGNED
+
 #else
 
 #define USING_GLOBALS
 #include "tcc.h"
+
+ST_DATA const int reg_classes[NB_REGS] = {
+  RC_INT | RC_R1,
+  RC_INT | RC_R2,
+  RC_INT | RC_R3,
+  RC_INT | RC_R4,
+  RC_INT | RC_R5,
+  RC_INT | RC_R6,
+  RC_INT | RC_R7
+};
 
 ST_DATA const char * const target_machine_defs =
     "__brainfuck\0"
@@ -91,15 +105,19 @@ ST_FUNC void oSTR(char *s)
 
 ST_FUNC void oTO(int reg)
 {
-    while (reg--) {
+    reg++;
+    while (reg) {
         oCHAR('>');
+        reg--;
     }
 }
 
 ST_FUNC void oFROM(int reg)
 {
-    while (reg--) {
+    reg++;
+    while (reg) {
         oCHAR('<');
+        reg--;
     }
 }
 
@@ -147,7 +165,7 @@ ST_FUNC void load(int r, SValue *sv)
 
 ST_FUNC void store(int r, SValue *sv)
 {
-    tcc_error("implement me: %s", __FUNCTION__);
+    /* XXX: Implement me */
 }
 
 ST_FUNC void gfunc_call(int nb_args)
