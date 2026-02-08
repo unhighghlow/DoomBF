@@ -1,11 +1,10 @@
 // =============================================
 // crt1.c
 
-#ifndef _BF
-
 // _UNICODE for tchar.h, UNICODE for API
 #include <tchar.h>
 
+#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -36,14 +35,22 @@ void __cdecl __set_app_type(int apptype);
 unsigned int __cdecl _controlfp(unsigned int new_value, unsigned int mask);
 extern int _tmain(int argc, _TCHAR * argv[], _TCHAR * env[]);
 
+#include "crtinit.c"
+
 /* Allow command-line globbing with "int _dowildcard = 1;" in the user source */
 int _dowildcard;
 
+static LONG WINAPI catch_sig(EXCEPTION_POINTERS *ex)
+{
+  return _XcptFilter(ex->ExceptionRecord->ExceptionCode, ex);
+}
+
 void _tstart(void)
 {
-    __TRY__
-    _startupinfo start_info = {0};
+    int ret;
 
+    _startupinfo start_info = {0};
+    SetUnhandledExceptionFilter(catch_sig);
     // Sets the current application type
     __set_app_type(_CONSOLE_APP);
 
@@ -54,11 +61,20 @@ void _tstart(void)
 #endif
 
     __tgetmainargs( &__argc, &__targv, &_tenviron, _dowildcard, &start_info);
-    exit(_tmain(__argc, __targv, _tenviron));
+    run_ctors(__argc, __targv, _tenviron);
+    ret = _tmain(__argc, __targv, _tenviron);
+    run_dtors();
+    exit(ret);
 }
+
+// =============================================
+// for 'tcc -run ,,,'
+
+__attribute__((weak)) extern int __run_on_exit();
 
 int _runtmain(int argc, /* as tcc passed in */ char **argv)
 {
+    int ret;
 #ifdef UNICODE
     _startupinfo start_info = {0};
 
@@ -75,9 +91,11 @@ int _runtmain(int argc, /* as tcc passed in */ char **argv)
 #if defined __i386__ || defined __x86_64__
     _controlfp(_PC_53, _MCW_PC);
 #endif
-    return _tmain(__argc, __targv, _tenviron);
+    run_ctors(__argc, __targv, _tenviron);
+    ret = _tmain(__argc, __targv, _tenviron);
+    run_dtors();
+    __run_on_exit(ret);
+    return ret;
 }
-
-#endif
 
 // =============================================

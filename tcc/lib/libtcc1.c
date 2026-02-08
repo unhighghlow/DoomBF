@@ -28,7 +28,6 @@ the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  
 */
 
-#ifndef _BF
 #define W_TYPE_SIZE   32
 #define BITS_PER_UNIT 8
 
@@ -108,7 +107,7 @@ union float_long {
 };
 
 /* XXX: we don't support several builtin supports for now */
-#if !defined __x86_64__ && !defined __arm__ && !defined _BF
+#if !defined __x86_64__ && !defined __arm__ && !defined __riscv && !defined __aarch64__
 
 /* XXX: use gcc/tcc intrinsic ? */
 #if defined __i386__
@@ -531,7 +530,7 @@ unsigned long long __fixunssfdi (float a1)
 {
     register union float_long fl1;
     register int exp;
-    register unsigned long l;
+    register unsigned long long l;
 
     fl1.f = a1;
 
@@ -539,16 +538,19 @@ unsigned long long __fixunssfdi (float a1)
 	return (0);
 
     exp = EXP (fl1.l) - EXCESS - 24;
-
     l = MANT(fl1.l);
+
     if (exp >= 41)
-	return (unsigned long long)-1;
+        return 1ULL << 63;
     else if (exp >= 0)
-        return (unsigned long long)l << exp;
+        l <<= exp;
     else if (exp >= -23)
-        return l >> -exp;
+        l >>= -exp;
     else
-        return 0;
+	return 0;
+    if (SIGN(fl1.l))
+        l = (unsigned long long)-l;
+    return l;
 }
 
 long long __fixsfdi (float a1)
@@ -570,17 +572,19 @@ unsigned long long __fixunsdfdi (double a1)
 	return (0);
 
     exp = EXPD (dl1) - EXCESSD - 53;
-
     l = MANTD_LL(dl1);
 
     if (exp >= 12)
-	return (unsigned long long)-1;
+        return 1ULL << 63; /* overflow result (like gcc, somewhat) */
     else if (exp >= 0)
-        return l << exp;
+        l <<= exp;
     else if (exp >= -52)
-        return l >> -exp;
+        l >>= -exp;
     else
         return 0;
+    if (SIGND(dl1))
+        l = (unsigned long long)-l;
+    return l;
 }
 
 long long __fixdfdi (double a1)
@@ -603,15 +607,15 @@ unsigned long long __fixunsxfdi (long double a1)
 	return (0);
 
     exp = EXPLD (dl1) - EXCESSLD - 64;
-
     l = dl1.l.lower;
-
     if (exp > 0)
-	return (unsigned long long)-1;
-    else if (exp >= -63) 
-        return l >> -exp;
-    else
+	return 1ULL << 63;
+    if (exp < -63)
         return 0;
+    l >>= -exp;
+    if (SIGNLD(dl1))
+        l = (unsigned long long)-l;
+    return l;
 }
 
 long long __fixxfdi (long double a1)
@@ -621,4 +625,11 @@ long long __fixxfdi (long double a1)
     return s ? ret : -ret;
 }
 #endif /* !ARM */
+
+#if defined _WIN64
+/* MSVC x64 intrinsic */
+void __faststorefence(void)
+{
+    __asm__("lock; orl $0,(%rsp)");
+}
 #endif
