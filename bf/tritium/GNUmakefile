@@ -88,19 +88,13 @@ endif
 install: $(EXEFILE)
 	$(INSTALL) $(ISTRIP) $(EXEFILE) $(INSTALLDIR)/$(TARGETFILE)$(INSTALLEXT)
 
-bfi.dasm.o:	tmp.dasm.c bfi.tree.h bfi.dasm.h bfi.run.h
-	$(CC) $(CFLAGS) $(DASMFLAGS) -I $(TOOLDIR) $(CPPFLAGS) $(TARGET_ARCH) -c -o $@ tmp.dasm.c
-
-bfi.gnulit.o:	bfi.gnulit.c bfi.tree.h bfi.gnulit.h bfi.run.h
-	$(CC) $(CFLAGS) $(TYPE_LIGHTNING) $(CPPFLAGS) $(TARGET_ARCH) -c -o $@ bfi.gnulit.c
-
 bfi.version.o: bfi.version.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c -o $@ bfi.version.c
 
 bfi.o: \
     bfi.c bfi.tree.h bfi.run.h bfi.ccode.h \
     clock.h ov_int.h \
-    bfi.runarray.h bfi.cpp.h
+    bfi.runarray.h
 bfi.bf.o: bfi.bf.c bfi.tree.h bfi.bf.h
 bfi.runarray.o: bfi.runarray.c bfi.tree.h bfi.run.h bfi.runarray.h \
     clock.h bfi.execloop.h big_int.h
