@@ -1,0 +1,63 @@
+/*
+Preprocessor abuse; all the modifications to the main bfi.c for adding
+backends are brought here in one place. To add another backend just add
+it to the list and fill in it's entry.
+*/
+
+#ifdef NO_EXT_BE
+#undef XX
+#else
+
+#define Nothing_Here /* TCC-0.9.27 needs a something in a argument of a
+		      * preprocessor macro, as this seems like a likely
+		      * bug for other compilers I've added a macro that
+		      * is something but compiles to nothing. */
+#if XX == 1
+/* The enum */
+#define X(a,b,c,d,e,f) c_ ## a,
+#elif XX == 2
+/* Help text */
+#define X(a,b,c,d,e,f) c
+#elif XX == 3
+/* Option flags */
+#define X(a,b,c,d,e,f) d
+#elif XX == 4
+/* Defaults */
+#define X(a,b,c,d,e,f)
+#elif XX == 5
+/* Print code */
+#define X(a,b,c,d,e,f) e
+#elif XX == 6
+/* Last Option Limits */
+#define X(a,b,c,d,e,f)
+#elif XX == 7
+/* Run directly */
+#define X(a,b,c,d,e,f) f
+#elif XX == 8
+/* Comma strings */
+#define X(a,b,c,d,e,f) ,#a
+#elif XX == 9
+/* Call option func. */
+#define X(a,b,c,d,e,f)
+#else
+#define X(a,b,c,d,e,f)
+#endif
+
+/****************************************************************************/
+
+#include "bfi.dasm.h"
+#include "bfi.gnulit.h"
+#include "bfi.ccode.h"
+#include "bfi.gmp.h"
+
+#include "bfi.dd.h"
+#include "bfi.nasm.h"
+#include "bfi.bf.h"
+#include "bfi.cpp.h"
+
+/****************************************************************************/
+
+#undef X
+#undef Nothing_Here
+#undef XX
+#endif /*NO_EXT_BE*/

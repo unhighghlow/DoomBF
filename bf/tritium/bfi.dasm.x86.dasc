@@ -1,0 +1,1285 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+#if defined(_WIN32)
+# include <windows.h>
+#else
+# include <sys/mman.h>
+#endif
+
+/* LLONG_MAX came in after inttypes.h, limits.h is very old. */
+#include <limits.h>
+#if _POSIX_VERSION >= 199506L || defined(LLONG_MAX)
+#include <inttypes.h>
+#endif
+
+#include "bfi.tree.h"
+#include "bfi.dasm.h"
+#include "bfi.run.h"
+#include "clock.h"
+
+/* Configure the generator */
+#define DASM_FDEF static
+
+#include "dynasm/dasm_proto.h"
+#include "dynasm/dasm_x86.h"
+
+static int dump_code = 0;
+static int use_sse4_2 = -1;
+
+static void check_for_sse4_2(void);
+
+int
+checkarg_dynasm(char * opt, char * arg UNUSED)
+{
+    if (!strcmp(opt, "-dump")) {
+	dump_code = 1;
+	return 1;
+    }
+    if (!strcmp(opt, "-fsse4_2")) { use_sse4_2 = 1; return 1; }
+    if (!strcmp(opt, "-fno-sse4_2")) { use_sse4_2 = 0; return 1; }
+    return 0;
+}
+
+#if defined(__x86_64__) || defined(__amd64__) || defined(_M_AMD64)
+#define CPUCHECK 64
+#elif defined(__i386__) || defined(_M_IX86)
+#define CPUCHECK 32
+#else
+#warning "Supported processor not detected for DYNASM."
+#define CPUCHECK 0
+#endif
+
+/*
+ *  Notes: It is possibly to use #if commands, but the assembler (pass1)
+ *  will see ALL the lines of assembly irrespective of these directives;
+ *  therefor no '.define' commands within a '#ifdef'.
+ *
+ *  The same applies the other way round, the assembler treats lines that
+ *  don't begin with a '|' character as untouchable and emits them all.
+ *
+ *  BUT, any line that begins with '||' is an assembler line which the
+ *  assembler will filter with .if directives and the contents of this
+ *  line (after the '||') are passed into the C source AFTER token
+ *  substitution.
+ */
+
+|.if I386
+||#define CPUID "i686"
+||int dynasm_ok = (CPUCHECK==32);
+|.arch x86
+|.else
+||#ifdef __ILP32__
+||#define CPUID "x86_32"
+||#else
+||#define CPUID "x86_64"
+||#endif
+||int dynasm_ok = (CPUCHECK==64);
+|.arch x64
+|.endif
+
+|.actionlist actions
+|.section sect0, sect1, sect2, sect3, sect4, sect5, sect6, sect7
+|.globals GLOB_
+
+/*  Using 32 bit working registers for both 32 and 64 bit. The REG_P register
+ *  is 64 bit on x64 so that the memory can be malloc'd beyond the 2GB limit.
+ *
+ *  Function pointers are used assuming that the program has been compiled
+ *  with -mcmodel=large so that all models will work.
+ */
+
+|.if I386
+|.define REG_P, esi
+|.define REG_A, eax
+|.define REG_AL, al
+|.define REG_D, edx
+|.define REG_DL, dl
+|.define REG_C, ecx
+|.define REG_CW, ecx
+|.define REG_CB, cl
+|.define REG_E, edi
+|.define REG_EW, edi
+|.else
+|.define REG_P, rbx
+|.define REG_A, eax
+|.define REG_AL, al
+|.define REG_D, edx
+|.define REG_DL, dl
+|.define REG_C, ecx
+|.define REG_CW, rcx
+|.define REG_CB, cl
+|.define REG_E, r14d
+|.define REG_EW, r14
+/* Windows is, of course, different.
+ * This time it may not even be Microsoft's fault!?!? */
+|.define PRM, rdi
+|.define PRM_D, edi
+|.endif
+
+#if defined(__APPLE__) && defined(__i386__)
+#define APPLE_i386_stackalign	16
+#endif
+
+#define Dst &Dstate
+static dasm_State *Dstate;
+static void* global_labels[GLOB__MAX];
+static int maxpc = 0;
+
+static void link_and_run(dasm_State **state);
+static void failout(void) __attribute__ ((__noreturn__));
+
+static void failout(void) { fprintf(stderr, "STOP Command executed.\n"); exit(1); }
+
+static struct freecell { struct freecell * next; void * memp; }
+    * saved_pointers = 0;
+
+static void
+save_ptr_for_free(void * memp)
+{
+    struct freecell * n = malloc(sizeof*n);
+    if (!n) {perror("malloc"); return; }
+    n->next = saved_pointers;
+    n->memp = memp;
+    saved_pointers = n;
+}
+
+static void
+free_saved_memory(void)
+{
+    while(saved_pointers) {
+        struct freecell * n = saved_pointers;
+        saved_pointers = saved_pointers->next;
+        free(n->memp);
+        free(n);
+    }
+}
+
+static void puts_without_nl(char * s)
+{
+    while(*s) putch(*s++);
+}
+
+static int acc_loaded = 0;
+static int acc_offset = 0;
+static int acc_dirty = 0;
+static int acc_hi_dirty = 0;
+static int tape_step = 0;
+static int acc_const = 0;
+static int acc_const_val = 0;
+
+static void
+clean_acc(void)
+{
+    if (acc_loaded && acc_dirty) {
+	if (tape_step > 1) {
+	    if (acc_offset) {
+		| mov [REG_P+acc_offset * tape_step], REG_A
+	    } else {
+		| mov [REG_P], REG_A
+	    }
+	} else {
+	    if (acc_offset) {
+		| mov byte [REG_P+acc_offset], REG_AL
+	    } else {
+		| mov byte [REG_P], REG_AL
+	    }
+	}
+
+	acc_dirty = 0;
+    }
+}
+
+static void
+set_acc_offset(int offset)
+{
+    if (acc_loaded && acc_dirty && acc_offset != offset)
+	clean_acc();
+
+    acc_offset = offset;
+    acc_loaded = 1;
+    acc_dirty = 1;
+    acc_hi_dirty = 1;
+    acc_const = 0;
+}
+
+static void
+load_acc_offset(int offset)
+{
+    acc_const = 0;
+
+    if (acc_loaded) {
+	if (acc_offset == offset) return;
+	if (acc_dirty)
+	    clean_acc();
+    }
+
+    acc_offset = offset;
+    if (tape_step > 1) {
+	if (acc_offset) {
+	    | mov REG_A, [REG_P+acc_offset*tape_step]
+	} else {
+	    | mov REG_A, [REG_P]
+	}
+    } else {
+	if (acc_offset) {
+	    | movzx REG_A, byte [REG_P+acc_offset]
+	} else {
+	    | movzx REG_A, byte [REG_P]
+	}
+    }
+
+    acc_loaded = 1;
+    acc_dirty = 0;
+    acc_hi_dirty = (tape_step*8 != cell_size);
+}
+
+void
+run_dynasm(void)
+{
+    struct bfi * n = bfprog;
+    int used_prtchr = 0;
+    int section_used = 0;
+
+    if (cell_size == 8) tape_step = 1; else
+    tape_step = sizeof(int);
+    only_uses_putch = 1;
+
+    if (use_sse4_2 < 0) check_for_sse4_2();
+
+    dasm_init(Dst, DASM_MAXSECTION);
+    dasm_setupglobal(Dst, global_labels, GLOB__MAX);
+    dasm_setup(Dst, actions);
+
+    /* Create Stack frame. */
+    |.sect0
+    | ->start:
+    |.if I386
+    | push ebp
+    | mov  ebp, esp
+    | push edi
+    | push esi
+    | push ebx
+    |
+    | mov  REG_P, dword [ebp+8]
+#ifdef APPLE_i386_stackalign
+    | sub  esp, 12	// Align 16 bytes
+#endif
+    |.else
+    | push rbp
+    | mov  rbp, rsp
+    | sub  rsp, 64	// Note: Win64 needs 32bytes of "Shadow space" too.
+    | mov  [rbp-8], r15
+    | mov  [rbp-16], r14
+    | mov  [rbp-24], r13
+    | mov  [rbp-32], rbx
+    |
+#ifndef _WIN32
+    | mov  REG_P, PRM
+#else
+    | mov  REG_P, rcx
+#endif
+    |.endif
+
+    while(n)
+    {
+	int count = n->count;
+	int offset = n->offset;
+
+	switch(n->type)
+	{
+	case T_MOV:
+	    clean_acc();
+	    if (acc_loaded) acc_offset -= count;
+	    if (tape_step == 1 && use_sse4_2<1) {
+		if (count == 1) {
+		    | inc REG_P
+		    break;
+		} else if (count == -1) {
+		    | dec REG_P
+		    break;
+		} else if (count == 2) {
+		    | inc REG_P
+		    | inc REG_P
+		    break;
+		} else if (count == -2) {
+		    | dec REG_P
+		    | dec REG_P
+		    break;
+		} else if (count < 0 && count != -128) {
+		    | sub REG_P, -count
+		} else {
+		    | add REG_P, count
+		}
+	    } else if (count*tape_step < 0 && count*tape_step != -128) {
+		| sub REG_P, -count*tape_step
+	    } else {
+		| add REG_P, count*tape_step
+	    }
+	    break;
+
+        case T_ADD:
+	    load_acc_offset(offset);
+	    set_acc_offset(offset);
+	    if (use_sse4_2<1) {
+		if (count == 1) {
+		    | inc REG_A
+		    break;
+		}
+		if (count == -1) {
+		    | dec REG_A
+		    break;
+		}
+	    }
+	    if ((count != 128 && count >= 0) || count <= -128) {
+		| add REG_A, count
+	    } else {
+		| sub REG_A, -count
+	    }
+	    break;
+
+	case T_SET:
+	    set_acc_offset(offset);
+	    if (acc_const && acc_const_val == count) {
+		;
+	    } else if (acc_const && acc_const_val+1 == count) {
+		| inc REG_A
+	    } else if (acc_const && acc_const_val-1 == count) {
+		| dec REG_A
+	    } else {
+		if (count == 0) {
+		    | xor REG_A, REG_A
+		} else {
+		    | mov REG_A, count
+		}
+	    }
+	    acc_const = 1;
+	    acc_const_val = count;
+	    break;
+
+	case T_CALC:
+	    if (n->count2 != 0) {
+		int count2 = n->count2;
+		load_acc_offset(n->offset2);
+		set_acc_offset(offset);
+
+		if (count2 == -2 || count2 == -3 || count2 == -5) {
+		    | neg REG_A
+		    count2 = -count2;
+		}
+
+		if (count2 == -1) {
+		    | neg REG_A
+		} else if (count2 == 2) {
+		    | add REG_A, REG_A
+		} else if (count2 == 3) {
+		    | lea REG_A, [REG_A+REG_A*2]
+		} else if (count2 == 3) {
+		    | lea REG_A, [REG_A+REG_A*2]
+		} else if (count2 == 5) {
+		    | lea REG_A, [REG_A+REG_A*4]
+		} else if (count2 == 6) {
+		    | lea REG_A, [REG_A+REG_A*2]
+		    | add REG_A, REG_A
+		} else if (count2 == 10) {
+		    | lea REG_A, [REG_A+REG_A*4]
+		    | add REG_A, REG_A
+		} else if (count2 != 1) {
+		    | imul REG_A, REG_A, (count2)
+		}
+	    } else {
+		fprintf(stderr, "Warning: T_CALC with count2 == 0 !?\n");
+		set_acc_offset(offset);
+		| xor REG_A, REG_A
+	    }
+
+	    if (n->count3 == 1 && tape_step > 1) {
+		| add REG_A, [REG_P+ (n->offset3*tape_step) ]
+	    } else if (n->count3 != 0) {
+		int count3 = n->count3;
+
+		if (tape_step > 1) {
+		    | mov REG_D, [REG_P+ (n->offset3*tape_step) ]
+		} else {
+		    | movzx REG_D, byte [REG_P+ (n->offset3) ]
+		}
+
+		if (count3 == -2 || count3 == -3 || count3 == -5) {
+		    | neg REG_D
+		    count3 = -count3;
+		}
+
+		if (count3 == -1) {
+		    | neg REG_D
+		} else if (count3 == 2) {
+		    | add REG_D, REG_D
+		} else if (count3 == 3) {
+		    | lea REG_D, [REG_D+REG_D*2]
+		} else if (count3 == 5) {
+		    | lea REG_D, [REG_D+REG_D*4]
+		} else if (count3 == 6) {
+		    | lea REG_D, [REG_D+REG_D*2]
+		    | add REG_D, REG_D
+		} else if (count3 == 10) {
+		    | lea REG_D, [REG_D+REG_D*4]
+		    | add REG_D, REG_D
+		} else if (count3 != 1) {
+		    | imul REG_D, REG_D, (count3)
+		}
+		| add REG_A, REG_D
+	    }
+
+	    if (n->count) {
+		| add REG_A, count
+	    }
+	    break;
+
+	case T_CALCMULT:
+	    if (n->count2 == 0 || n->count3 == 0) {
+		fprintf(stderr, "Warning: T_CALCMULT with countX == 0 !?\n");
+		set_acc_offset(offset);
+		| xor REG_A, REG_A
+		break;
+	    }
+
+	    load_acc_offset(n->offset2);
+	    set_acc_offset(offset);
+	    if (n->count2 != 1) {
+		| imul REG_A, REG_A, (n->count2)
+	    }
+	    if (n->count3 == 1 && tape_step > 1) {
+		| imul REG_A, [REG_P+ (n->offset3*tape_step) ]
+	    } else {
+		if (tape_step > 1) {
+		    | mov REG_D, [REG_P+ (n->offset3*tape_step) ]
+		} else {
+		    | movzx REG_D, byte [REG_P+ (n->offset3) ]
+		}
+		if (n->count3 != 1) {
+		    | imul REG_D, REG_D, (n->count3)
+		}
+		| imul REG_A, REG_D
+	    }
+
+	    if (n->count) {
+		| add REG_A, count
+	    }
+	    break;
+
+	case T_LT:
+	    if (n->count != 0 || n->count2 != 1 || n->count3 != 1)
+		fprintf(stderr, "Warning: T_LT with bad counts.\n");
+
+	    load_acc_offset(n->offset);
+	    set_acc_offset(offset);
+
+	    if (tape_step > 1) {
+		| mov REG_D, [REG_P+ (n->offset2*tape_step) ]
+		| mov REG_E, [REG_P+ (n->offset3*tape_step) ]
+	    } else {
+		| movzx REG_D, byte [REG_P+ (n->offset2) ]
+		| movzx REG_E, byte [REG_P+ (n->offset3) ]
+	    }
+
+	    if (cell_mask > 0) {
+		if (cell_mask != 0xFF || tape_step != 1) {
+		    | and REG_D, cell_mask
+		    | and REG_E, cell_mask
+		}
+	    }
+
+	    | xor REG_C, REG_C
+	    | cmp REG_D, REG_E
+	    | setb REG_CB
+	    | add REG_A, REG_C
+	    break;
+
+	case T_DIV:
+	    load_acc_offset(n->offset);
+	    set_acc_offset(offset+3);
+
+	    if (cell_mask > 0) {
+		| and REG_A, cell_mask
+	    }
+
+	    | xor REG_D, REG_D
+	    | xchg REG_D,REG_A
+
+	    if (tape_step > 1) {
+		| mov REG_E, [REG_P+ ((n->offset+1)*tape_step) ]
+	    } else {
+		| movzx REG_E, byte [REG_P+ (n->offset+1) ]
+	    }
+
+	    if (cell_mask > 0) {
+		| and REG_E, cell_mask
+	    }
+
+	    | test REG_E,REG_E
+	    | je  >1
+	    | xchg REG_D,REG_A
+	    | div REG_E
+	    /* REG_A = quotient, REG_D = remainder */
+	    | 1:
+
+	    if (tape_step > 1) {
+		| mov [REG_P+ ((n->offset+2)*tape_step) ], REG_D
+	    } else {
+		| mov byte [REG_P+ (n->offset+2) ], REG_DL
+	    }
+
+	    break;
+
+	case T_WHL:
+	    if (cell_mask == 0xFF && tape_step == 1 && use_sse4_2>0 &&
+		n->next->type == T_MOV && n->next->count == 1 &&
+		n->next->next && n->next->next->jmp == n) {
+
+		/* This is a strlen ...
+		 *  I'm using the "pcmpistri" instruction to allow top speed
+		 *  when I'm doing a long search, but that instruction has a
+		 *  large startup time. So I'm checking [N] and [N+1] manually
+		 *  and if either of them is zero I avoid the overhead.
+		 */
+
+		if (verbose>1)
+		    fprintf(stderr, "Strlen @(%d,%d)\n", n->line, n->col);
+
+		count = n->next->count;
+		load_acc_offset(n->offset);
+		clean_acc();
+		acc_const = acc_loaded = 0;
+
+		| cmp   REG_AL, 0
+		| jz   >1
+		| add REG_P, 1
+		if (acc_offset) {
+		    | movzx REG_A, byte [REG_P+acc_offset]
+		} else {
+		    | movzx REG_A, byte [REG_P]
+		}
+		| cmp   REG_AL, 0
+		| jz   >1
+
+
+		if (n->offset) {
+		    | add REG_P, n->offset
+		}
+
+		| mov        REG_A, -16
+		| pxor       xmm0, xmm0
+
+		| 3:
+		| add        REG_A, 16
+		| pcmpistri  xmm0, [REG_P + REG_A], 0x08
+		| jnz        <3
+
+		| add        REG_C, REG_A
+		| add        REG_P, REG_CW
+
+		if (n->offset) {
+		    | add REG_P, -n->offset
+		}
+
+		load_acc_offset(n->offset);
+		clean_acc();
+
+		| 1:
+
+		n = n->jmp;
+		break;
+	    }
+
+	    /* This adds an 'MFIND' token to the dynasm generator. It's now
+	     * faster than -r for "Zozotez" */
+	    if (cell_mask <=0 || (tape_step==1 && cell_mask == 0xFF)) {
+                struct bfi *n1, *n2=0, *n3=0, *n4=0;
+                n1 = n->next;
+                if (n1) n2 = n1->next;
+                if (n2) n3 = n2->next;
+                if (n3) n4 = n3->next;
+
+		if (n1->type == T_ADD && n2->type == T_ADD &&
+                    n3->type == T_MOV && n4->type == T_END &&
+                    n1->count == -1 && n2->count == 1 &&
+                    n->offset == n1->offset &&
+                    n->offset == n2->offset - n3->count
+                ) {
+		    load_acc_offset(n->offset);
+		    set_acc_offset(n->offset);
+		    | sub REG_A, 1
+		    clean_acc();
+
+		    if (tape_step == 1) {
+			| cmp   REG_AL, 255
+		    } else {
+			| cmp   REG_A, -1
+		    }
+		    | jz   >2
+		    | 1:
+
+			clean_acc();
+			if (acc_loaded) acc_offset -= n3->count;
+			if (n3->count*tape_step < 0 && n3->count*tape_step != -128) {
+			    | sub REG_P, -n3->count*tape_step
+			} else {
+			    | add REG_P, n3->count*tape_step
+			}
+
+			load_acc_offset(n->offset);
+			clean_acc();
+
+			if (tape_step == 1) {
+			    | cmp   REG_AL, 255
+			} else {
+			    | cmp   REG_A, -1
+			}
+
+		    | jnz   <1
+		    | 2:
+
+		    load_acc_offset(n->offset);
+		    set_acc_offset(n->offset);
+		    | add REG_A, 1
+
+		    n = n->jmp;
+		    break;
+		}
+	    }
+
+	    /*FALLTHROUGH*/
+
+	case T_IF: case T_MULT: case T_CMULT:
+	    load_acc_offset(n->offset);
+	    clean_acc();
+
+	    if (cell_mask > 0 && acc_hi_dirty) {
+		if (cell_mask != 0xFF || tape_step != 1) {
+		    | and REG_A, cell_mask
+		}
+	    }
+
+	    n->jmp->count = maxpc;
+	    maxpc += 2;
+	    dasm_growpc(Dst, maxpc);
+
+	    if (tape_step == 1) {
+                | cmp   REG_AL, 0
+	    } else {
+		| cmp   REG_A, 0
+	    }
+
+	    | jz   =>(n->jmp->count)
+	    | =>(n->jmp->count + 1):
+	    break;
+
+	case T_END:
+	    load_acc_offset(n->offset);
+	    clean_acc();
+
+	    if (cell_mask > 0 && acc_hi_dirty) {
+		if (cell_mask != 0xFF || tape_step != 1) {
+		    | and REG_A, cell_mask
+		}
+	    }
+
+	    if (tape_step == 1) {
+                | cmp   REG_AL, 0
+	    } else {
+		| cmp   REG_A, 0
+	    }
+
+	    | jnz   =>(n->count + 1)
+	    | =>(n->count):
+
+	case T_ENDIF:
+	    clean_acc();
+	    acc_const = acc_loaded = 0;
+
+	    | =>(n->count):
+	    break;
+
+#ifndef APPLE_i386_stackalign
+	case T_PRT:
+	    clean_acc();
+	    load_acc_offset(offset);
+	    acc_loaded = 0;
+
+            used_prtchr = 1;
+	    if (tape_step == 1)
+		| call ->prtchr
+	    else
+		| call ->prtchrw
+	    break;
+
+	case T_PRTI:
+	    clean_acc();
+	    load_acc_offset(offset);
+	    acc_loaded = 0;
+
+	    |.if I386
+	    | push REG_A
+	    | call &putint
+	    | pop eax
+	    |.else
+#ifndef _WIN32
+	    | mov PRM_D, REG_A
+#else
+	    | mov REG_C, REG_A
+#endif
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+	    | mov   eax, (uintptr_t) putint
+#else
+	    | mov64 rax, (uintptr_t) putint
+#endif
+	    | call  rax
+	    |.endif
+	    break;
+
+	case T_CHR:
+	    clean_acc();
+	    acc_const = acc_loaded = 0;
+
+	    used_prtchr = 1;
+	    if (count >= 0 && count < 256) {
+		| mov REG_AL, (count)
+		| call ->prtchr
+		break;
+	    }
+
+	    | mov REG_A, (count)
+	    | call ->prtchrw
+	    break;
+
+	case T_STR:
+	    clean_acc();
+	    acc_const = acc_loaded = 0;
+
+	    {
+		char *s = malloc(n->str->length+1);
+		if (!s) {
+		    fprintf(stderr, "Save of string failed\n");
+		    exit(43);
+		}
+		memcpy(s, n->str->buf, n->str->length);
+		s[n->str->length] = 0;
+		save_ptr_for_free(s);
+
+		|.if I386
+		| mov REG_A, s
+		| push REG_A
+		| call &puts_without_nl
+		| pop REG_D
+		|.else
+#ifdef __ILP32__
+		| mov eax, (uintptr_t) s
+#else
+		| mov64 rax, (uintptr_t) s
+#endif
+#ifndef _WIN32
+		| mov PRM, rax
+#else
+		| mov REG_CW, rax
+#endif
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+		| mov   eax, (uintptr_t) puts_without_nl
+#else
+		| mov64 rax, (uintptr_t) puts_without_nl
+#endif
+		| call  rax
+		|.endif
+	    }
+	    break;
+
+	case T_INP:
+	    load_acc_offset(offset);
+	    set_acc_offset(offset);
+
+	    |.if I386
+	    | push REG_A
+	    | call &getch
+	    | pop REG_D
+	    |.else
+#ifndef _WIN32
+	    | mov PRM_D, REG_A
+#else
+	    | mov REG_C, REG_A
+#endif
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+	    | mov   eax, (uintptr_t) getch
+#else
+	    | mov64 rax, (uintptr_t) getch
+#endif
+	    | call  rax
+	    |.endif
+	    /* Note: REG_A must be eax/rax */
+	    break;
+
+	case T_INPI:
+	    load_acc_offset(offset);
+	    set_acc_offset(offset);
+
+	    |.if I386
+	    | push REG_A
+	    | call &getint
+	    | pop REG_D
+	    |.else
+#ifndef _WIN32
+	    | mov PRM_D, REG_A
+#else
+	    | mov REG_C, REG_A
+#endif
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+	    | mov   eax, (uintptr_t) getint
+#else
+	    | mov64 rax, (uintptr_t) getint
+#endif
+	    | call  rax
+	    |.endif
+	    /* Note: REG_A must be eax/rax */
+	    break;
+#endif
+
+#ifdef APPLE_i386_stackalign
+	case T_PRT:
+	    clean_acc();
+	    load_acc_offset(offset);
+	    acc_loaded = 0;
+
+	    | mov dword [esp], REG_A
+	    | call &putch
+	    break;
+
+	case T_PRTI:
+	    clean_acc();
+	    load_acc_offset(offset);
+	    acc_loaded = 0;
+	    | mov dword [esp], REG_A
+	    | call &putint
+	    break;
+
+	case T_CHR:
+	    clean_acc();
+	    acc_const = acc_loaded = 0;
+	    | mov dword [esp], (count)
+	    | call &putch
+	    break;
+
+	case T_STR:
+	    clean_acc();
+	    acc_const = acc_loaded = 0;
+	    {
+		int i;
+		for(i=0; i<n->str->length; i++) {
+		    | mov dword [esp], (n->str->buf[i])
+		    | call &putch
+		}
+	    }
+	    break;
+
+	case T_INP:
+	    load_acc_offset(offset);
+	    set_acc_offset(offset);
+	    | mov dword [esp], REG_A
+	    | call &getch
+	    break;
+
+	case T_INPI:
+	    load_acc_offset(offset);
+	    set_acc_offset(offset);
+	    | mov dword [esp], REG_A
+	    | call &getint
+	    break;
+#endif
+
+	case T_STOP:
+	    |.if I386
+	    | call &failout
+	    |.else
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+	    | mov   eax, (uintptr_t) failout
+#else
+	    | mov64 rax, (uintptr_t) failout
+#endif
+	    | call  rax
+	    |.endif
+	    break;
+
+	case T_NOP:
+	case T_DUMP:
+            fprintf(stderr, "Warning on code generation: "
+                    "%s node: ptr+%d, cnt=%d, @(%d,%d).\n",
+                    tokennames[n->type],
+                    n->offset, n->count, n->line, n->col);
+            break;
+
+	default:
+	    fprintf(stderr, "Code gen error: "
+		    "%s\t"
+		    "%d:%d, %d:%d, %d:%d\n",
+		    tokennames[n->type],
+		    n->offset, n->count,
+		    n->offset2, n->count2,
+		    n->offset3, n->count3);
+	    exit(1);
+	}
+	n=n->next;
+
+	/* If this section is nearly full, step onto the next */
+	if (Dst_REF->section->ofs > 0x1000000-0x1000) {
+	    switch(section_used) {
+
+	    case 0:
+		| jmp ->section_1_start
+		| .sect1
+		| ->section_1_start:
+		section_used++;
+		break;
+
+	    case 1:
+		| jmp ->section_2_start
+		| .sect2
+		| ->section_2_start:
+		section_used++;
+		break;
+
+	    case 2:
+		| jmp ->section_3_start
+		| .sect3
+		| ->section_3_start:
+		section_used++;
+		break;
+
+	    case 3:
+		| jmp ->section_4_start
+		| .sect4
+		| ->section_4_start:
+		section_used++;
+		break;
+
+	    case 4:
+		| jmp ->section_5_start
+		| .sect5
+		| ->section_5_start:
+		section_used++;
+		break;
+
+	    case 5:
+		| jmp ->section_6_start
+		| .sect6
+		| ->section_6_start:
+		section_used++;
+		break;
+
+	    case 6:
+		| jmp ->section_7_start
+		| .sect7
+		| ->section_7_start:
+		section_used++;
+		break;
+
+	    default:
+		fprintf(stderr, "ERROR: "
+			"DynASM is limited to 16Mbyte of code space per "
+			"section, Codelen at $%x:$%x\n",
+			section_used, Dst_REF->section->ofs);
+		exit(1);
+	    }
+	}
+    }
+
+    |->endcode:
+    |.if I386
+    | xor eax, eax
+    | lea esp,[ebp-12]
+    | pop ebx
+    | pop esi
+    | pop edi
+    | pop ebp
+    | ret
+    |.else
+    | xor rax, rax
+    | mov  r15, [rbp-8]
+    | mov  r14, [rbp-16]
+    | mov  r13, [rbp-24]
+    | mov  rbx, [rbp-32]
+    | mov rsp, rbp
+    | pop rbp
+    | ret
+    |.endif
+
+    /*
+     *	This is a simple print character library routine.
+     *  It make the single char T_CHR translation a 7 or 10 byte sequence.
+     */
+    if (used_prtchr) {
+	| ->prtchr:
+	| movzx eax,al
+	| ->prtchrw:
+	|.if I386
+	| push REG_A
+	| call &putch
+	| pop eax
+	| ret
+	|.else
+#ifndef _WIN32
+	| mov PRM_D, REG_A
+#else
+	| mov REG_C, REG_A
+#endif
+#if (defined(__code_model_small__) && !defined(__PIC__)) || defined(__ILP32__)
+	| mov   eax, (uintptr_t) putch
+#else
+	| mov64 rax, (uintptr_t) putch
+#endif
+	| jmp  rax
+	|.endif
+    }
+
+    /*
+	fprintf(stderr, "Codesize bsize=%d pos=%d epos=%d ofs=%d\n",
+	    (int)(Dst_REF->section->bsize),
+	    (int)(Dst_REF->section->pos),
+	    (int)(Dst_REF->section->epos),
+	    Dst_REF->section->ofs);
+    */
+
+    link_and_run(Dst);
+    free_saved_memory();
+}
+
+
+#if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+#ifndef MAP_FAILED
+#define MAP_FAILED (-1)
+#endif
+#if defined(__minix__)
+#define NO_MPROTECT
+#endif
+
+typedef int (*fnptr)(char* memory);
+
+static void
+link_and_run(dasm_State ** state)
+{
+    fnptr  code = 0;
+    char   *codeptr;
+    size_t  codelen;
+    int     dasm_status = dasm_link(state, &codelen);
+    void*   location_hint = 0;
+    if (dasm_status != DASM_S_OK) {
+	fprintf(stderr, "Process dasm_link() failed\n");
+	exit(1);
+    }
+
+#if defined(__linux__) && defined(__i386__)
+    /* If the 128M mark is available use it, otherwise drop to the 64M mark.
+     * Leave a gap below on the same 4M page table page. */
+    /* NOTE: Clang x64 generates an illegal relocation for this condition */
+    if (labs((long)link_and_run-0x08048000) < 0x1000000)
+	location_hint = (void*) 0x04048000;
+    else
+	location_hint = (void*) 0x08048000;
+#endif
+#if defined(__linux__) && defined(__x86_64__)
+    location_hint = (void*) 0x08048000;
+#endif
+
+#if !defined(LEGACYOS) && !defined(_WIN32)
+#ifdef MAP_ANONYMOUS
+    /* I allocate this with a 'PROT_EXEC' flag set so the kernel can choose
+     * to put it in the 'code area' if there is such a thing (i386) */
+    codeptr =
+	(char *) mmap(location_hint, codelen,
+#ifdef NO_MPROTECT
+		      PROT_WRITE |
+#endif
+		      PROT_READ | PROT_EXEC,
+		      MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#else
+    /* This'll probably only work with Linux ... Oh, FreeBSD too. */
+    {
+	int fd = open("/dev/zero", O_RDWR);
+	if (fd >= 0) {
+	    codeptr =
+		(char *) mmap(NULL, codelen,
+#ifdef NO_MPROTECT
+			      PROT_WRITE |
+#endif
+			      PROT_READ | PROT_EXEC, MAP_PRIVATE, fd, 0);
+	    close(fd);
+	} else
+	    codeptr = MAP_FAILED;
+    }
+#endif
+    if (codeptr == MAP_FAILED) {
+	perror("Unable to allocate memory for executable");
+	exit(1);
+    }
+
+#ifndef NO_MPROTECT
+    if (mprotect(codeptr, codelen, PROT_WRITE | PROT_READ) != 0) {
+	perror("mprotect to enable code writing");
+    };
+#endif
+#elif defined(_WIN32)
+    codeptr = (char*) VirtualAlloc(0, codelen, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (!codeptr) {
+	perror("Unable to allocate executable memory");
+	exit(1);
+    }
+#else
+    codeptr = malloc(codelen);
+#endif
+
+    (void)dasm_getpclabel;      /* Unused */
+
+    dasm_encode(state, codeptr);
+    dasm_free(state);
+    delete_tree();
+
+#if !defined(LEGACYOS) && !defined(_WIN32) && !defined(NO_MPROTECT)
+    if (mprotect(codeptr, codelen, PROT_EXEC | PROT_READ) != 0) {
+	if (verbose)
+	    perror("mprotect read only");
+    };
+#elif defined(_WIN32)
+    DWORD oldProt = 0;
+    if (!VirtualProtect(codeptr, codelen, PAGE_EXECUTE_READ, &oldProt)) {
+	if (verbose)
+	    perror("VirtualProtect read only failed");
+    }
+#endif
+
+#if (CPUCHECK == 64) && !defined(__ILP32__)
+    if (dump_code)
+    {
+	/* Write generated machine code to a temporary file.
+	// View with:
+	//  objdump -D -b binary -mi386 -Mx86,intel --adjust-vma=0x8048000 /tmp/code-dasm.bin
+	//  objdump -D -b binary -mi386 -Mx86-64,intel --adjust-vma=0x8048000 /tmp/code-dasm.bin
+	// or
+	//  ndisasm -u -o 0x8048000 /tmp/code-dasm.bin
+	//  ndisasm -b64 -o 0x8048000 /tmp/code-dasm.bin
+	*/
+	const char *fname = "/tmp/code-dasm.bin";
+	FILE   *f = fopen(fname, "w");
+	fwrite(codeptr, codelen, 1, f);
+	fclose(f);
+	fprintf(stderr, "Dynasm "CPUID" code dumped to file '%s'\n", fname);
+	fprintf(stderr, "codeptr  = 0x%lx\n", (unsigned long) codeptr);
+	fprintf(stderr, "codelen  = %lu\n", (unsigned long) codelen);
+	fprintf(stderr, "putch    = 0x%lx\n", (unsigned long) &putch);
+	fprintf(stderr, "getch    = 0x%lx\n", (unsigned long) &getch);
+	fprintf(stderr, "failout  = 0x%lx\n", (unsigned long) &failout);
+	fprintf(stderr, "putint   = 0x%lx\n", (unsigned long) &putint);
+	fprintf(stderr, "getint   = 0x%lx\n", (unsigned long) &getint);
+	fprintf(stderr, "putsnonl = 0x%lx\n", (unsigned long) &puts_without_nl);
+    }
+#else
+    if (dump_code)
+    {
+	/* View for -m32
+	// objdump -D -mi386 -Mx86,intel /tmp/code-dasm.srec
+	// View for -mx32
+	// objdump -D -mi386 -Mx86-64,intel /tmp/code-dasm.srec
+	*/
+	const char *fname = "/tmp/code-dasm.srec";
+	FILE * f = fopen(fname, "w");
+	int i;
+
+	fprintf(stderr, "Dynasm "CPUID" code dumped to file '%s'\n", fname);
+	fprintf(f, "$$ %s-%s\n", CPUID, bfname);
+	fprintf(f, "  codeptr  $%lx\n", (unsigned long) codeptr);
+	fprintf(f, "  putch    $%lx\n", (unsigned long) &putch);
+	fprintf(f, "  getch    $%lx\n", (unsigned long) &getch);
+	fprintf(f, "  failout  $%lx\n", (unsigned long) &failout);
+	fprintf(f, "  putint   $%lx\n", (unsigned long) &putint);
+	fprintf(f, "  getint   $%lx\n", (unsigned long) &getint);
+	fprintf(f, "  puts_without_nl $%lx\n", (unsigned long) &puts_without_nl);
+	fprintf(f, "$$\n");
+
+	fprintf(f, "S004000000FB\n");
+	for(i=0; i < (int)((codelen+31)/32); i++) {
+	    int j, sum = 0;
+	    fprintf(f, "S3");
+	    fprintf(f, "%02X", sum = 4+32+1);
+	    fprintf(f, "%08X", j = (int)(codeptr+i*32));
+	    sum += ((j>>24)&0xFF);
+	    sum += ((j>>16)&0xFF);
+	    sum += ((j>> 8)&0xFF);
+	    sum += ((j    )&0xFF);
+	    for(j=0; j<32; j++)
+		fprintf(f, "%02X", codeptr[i*32+j] & 0xFF);
+	    for(j=0; j<32; j++)
+		sum += (codeptr[i*32+j] & 0xFF);
+	    fprintf(f, "%02X", (sum^0xFF)&0xFF);
+	    fprintf(f, "\n");
+	}
+	fprintf(f, "S70500000000FA\n");
+	fclose(f);
+    }
+#endif
+
+    if (verbose)
+	fprintf(stderr, "Compiled %d bytes of "CPUID" Dynasm code, running.\n", (int)codelen);
+
+    /* The C99 standard leaves casting from "void *" to a function
+       pointer undefined.  The assignment used below is the POSIX.1-2003
+       (Technical Corrigendum 1) workaround; see the Rationale for the
+       POSIX specification of dlsym(). */
+					     /* -- Linux man page dlsym() */
+    *(void **) (&code) = (void*) codeptr;
+    start_runclock();
+    code(map_hugeram());
+    finish_runclock(&run_time, &io_time);
+
+    if (verbose>3)
+	fprintf(stderr, "Run complete\n");
+
+#if !defined(LEGACYOS) && !defined(_WIN32)
+    if (munmap(codeptr, codelen) != 0)
+	if (verbose)
+	    perror("munmap(code..)");
+#elif defined(_WIN32)
+    (void)VirtualFree(codeptr, 0, MEM_RELEASE);
+#else
+    free(codeptr);
+#endif
+}
+
+#ifndef __SSE4_2__
+#if defined(__GNUC__) && ((__GNUC__>4) || (__GNUC__==4 && __GNUC_MINOR__>=2))
+#ifndef __PCC__
+#include <cpuid.h>
+#endif
+#endif
+#endif
+
+/* The sse4_2 and popcnt instructions were introduced with "Nehalem" X86
+ * processors. This release also included considerable optimisations in
+ * the instruction scheduling and merging processes.
+ */
+static void
+check_for_sse4_2(void)
+{
+#ifdef __SSE4_2__
+    use_sse4_2 = 1;
+#else
+    use_sse4_2 = 0;
+
+#ifdef bit_SSE4_2
+    int i;
+    unsigned a, b, c, d;
+
+    i =  __get_cpuid(1, &a, &b, &c, &d);
+
+    if (i && (c & bit_SSE4_2))
+	use_sse4_2 = 1;
+#endif
+#endif
+}
