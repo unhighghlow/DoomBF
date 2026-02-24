@@ -98,7 +98,7 @@ bfi.version.o: bfi.version.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c -o $@ bfi.version.c
 
 bfi.o: \
-    bfi.c bfi.tree.h bfi.run.h bfi.be.def bfi.ccode.h \
+    bfi.c bfi.tree.h bfi.run.h bfi.ccode.h \
     clock.h ov_int.h \
     bfi.runarray.h bfi.cpp.h
 bfi.bf.o: bfi.bf.c bfi.tree.h bfi.bf.h
