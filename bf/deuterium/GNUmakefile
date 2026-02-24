@@ -88,7 +88,7 @@ endif
 install: $(EXEFILE)
 	$(INSTALL) $(ISTRIP) $(EXEFILE) $(INSTALLDIR)/$(TARGETFILE)$(INSTALLEXT)
 
-bfi.version.o: bfi.version.h
+bfi.version.o: bfi.version.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -c -o $@ bfi.version.c
 
 bfi.o: \
