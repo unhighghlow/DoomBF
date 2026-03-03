@@ -66,6 +66,23 @@ ST_FUNC void asm_compute_constraints(ASMOperand *operands,
                                     const uint8_t *clobber_regs,
                                     int *pout_reg)
 {
+    printf("asm_compute_constraints(nb_operands: %d, nb_outputs: %d)\n", nb_operands, nb_outputs);
+    ASMOperand *op;
+    int i, reg;
+    char dig;
+    for (i = 0; i < nb_operands; i++) {
+        op = &operands[i];
+        if (op->constraint[0] != 'r') goto invalid;
+        if (op->constraint[2] != '\0') goto invalid;
+        dig = op->constraint[1];
+        if (dig < '0' || dig > '7') goto invalid;
+
+        op->reg = dig - '0';
+
+        continue;
+invalid:
+        tcc_error("constraint: '%s'", op->constraint);
+    }
 }
 
 ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str)

@@ -216,7 +216,12 @@ ST_FUNC void load(int r, SValue *sv)
     int fr = sv->r;
     int v = fr & VT_VALMASK;
     char fc = sv->c.i;
-    if (v == VT_CONST) {
+    if (fr & VT_LVAL) {
+        oSTR("lvalload to r");
+        oCHAR(r+'0');
+    } else if (v == VT_CONST) {
+        oSTR("constload to r");
+        oCHAR(r+'0');
         if (fr & VT_SYM)
           tcc_error("unimp: load(sym)");
         if (is_float(sv->type.t))
@@ -231,7 +236,7 @@ ST_FUNC void load(int r, SValue *sv)
         oSET(fc);
         oFROM(r);
     } else
-      tcc_error("unimp: load(non-const)");
+      tcc_error("unimp: load(?)");
 }
 
 ST_FUNC void store(int r, SValue *sv)
