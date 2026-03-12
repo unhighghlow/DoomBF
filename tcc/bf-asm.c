@@ -59,6 +59,21 @@ ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands,
                          uint8_t *clobber_regs,
                          int out_reg)
 {
+    ASMOperand *op;
+    int i, reg;
+    if (!is_output) {
+        for(i = 0; i < nb_operands; i++) {
+            SValue sv;
+            op = &operands[i];
+            load(op->reg, &sv);
+        }
+    } else {
+        for(i = 0; i < nb_outputs; i++) {
+            SValue sv;
+            op = &operands[i];
+            store(op->reg, &sv);
+        }
+    }
 }
 
 ST_FUNC void asm_compute_constraints(ASMOperand *operands,
