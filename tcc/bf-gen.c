@@ -112,8 +112,18 @@ ST_FUNC void oSTR(char *s)
     }
 }
 
+/* Output a newline
+ *
+ * Does nothing if do_debug is off*/
+ST_FUNC void oENDL() {
+    if (!(TCC_STATE_VAR(do_debug))) return;
+
+    oCHAR('\n');
+}
+
 /* Output a comment (remark), replacing
- * all instructions with `_`
+ * all instructions with `_`, ending
+ * with \n<space><space>
  *
  * Does nothing if do_debug is off*/
 ST_FUNC void oREM(char *s)
@@ -130,7 +140,7 @@ ST_FUNC void oREM(char *s)
         }
         oCHAR(chr);
     }
-    oCHAR(' ');
+    oSTR("\n  ");
 }
 
 /* Generate the movement from the base
@@ -155,13 +165,44 @@ ST_FUNC void oFROM(int reg)
     }
 }
 
+/* Output `x` `chr`s */
+ST_FUNC void oREP(int x, char chr)
+{
+    while (x) {
+        oCHAR(chr);
+        x--;
+    }
+}
+
 /* Output `x` pluses */
 ST_FUNC void oSET(int x)
 {
-    while (x) {
-        oCHAR('+');
-        x--;
-    }
+    oSTR("[-]");
+    oREP(x, '+');
+}
+
+/* Output code that copies A to B*/
+ST_FUNC void oCOPY(int a, int b) {
+    oTO(a);
+    oCHAR('[');
+      oCHAR('-');
+      oFROM(a);
+      oTO(b);
+      oCHAR('+');
+      oFROM(b);
+      // to scrap
+      oCHAR('+');
+      // from scrap
+      oTO(a);
+    oCHAR(']');
+    oFROM(a);
+    // to scrap
+    oCHAR('[');
+      oCHAR('-');
+      oTO(a);
+      oCHAR('+');
+      oFROM(a);
+    oCHAR(']');
 }
 
 /* Generate the beginning of a block */
@@ -217,31 +258,74 @@ ST_FUNC void load(int r, SValue *sv)
     int v = fr & VT_VALMASK;
     char fc = sv->c.i;
     if (fr & VT_LVAL) {
-        oSTR("lvalload to r");
-        oCHAR(r+'0');
+        if (v == VT_LOCAL) {
+            oREM("local load");
+
+            int bt = sv->type.t & VT_BTYPE;
+            int align, size = type_size(&sv->type, &align);
+            if (is_float(bt))
+              tcc_error("unimp: load-local(float)");
+            else if (bt == VT_FUNC)
+              size = PTR_SIZE;
+            printf("fc: %d\n", fc);
+        } else if (v < VT_CONST) {
+            oREM("reg load");
+
+            oCOPY(v, r);
+        } else {
+            oREM("?NOT IMPLEMENTED: non-local lval load?");
+
+            tcc_error("unimp: load(non-local lval): 0x%x", v);
+        }
     } else if (v == VT_CONST) {
-        oSTR("constload to r");
-        oCHAR(r+'0');
+        oREM("constload");
         if (fr & VT_SYM)
           tcc_error("unimp: load(sym)");
         if (is_float(sv->type.t))
           tcc_error("unimp: load(float)");
-        if (fc != sv->c.i)
-          tcc_error("unimp: load(very large const)");
-        if (((unsigned)fc + (1 << 11)) >> 12)
+        if (fc >> 8)
           tcc_error("unimp: load(large const) (0x%x)", fc);
 
         oTO(r);
-        oSTR("[-]");
         oSET(fc);
         oFROM(r);
     } else
-      tcc_error("unimp: load(?)");
+        oREM("?NOT IMPLEMENTED: load?");
+
+    oENDL();
 }
 
 ST_FUNC void store(int r, SValue *sv)
 {
-    /* XXX: Implement me */
+    int fr = sv->r & VT_VALMASK;
+    int fc = sv->c.i;
+    int ft = sv->type.t;
+    int bt = ft & VT_BTYPE;
+    int align, size = type_size(&sv->type, &align);
+    if (fr == VT_LOCAL) {
+        if (is_float(bt))
+          tcc_error("unimp: store(float)");
+        if (bt == VT_STRUCT)
+          tcc_error("unimp: store(struct)");
+        if (size != 1)
+          tcc_error("unimp: non-byte store: %d", size);
+
+        if (fc > 0) {
+            tcc_error("positive stack offset: %d", fc);
+        }
+        oREM("store (local)");
+
+        oTO(TREG_SP);
+        oREP(-fc, '-');
+        oFROM(TREG_SP);
+        //oSTORE(r, TREG_SP);
+        oTO(TREG_SP);
+        oREP(-fc, '+');
+        oFROM(TREG_SP);
+
+    } else
+        oREM("?NOT IMPLEMENTED: store?");
+    oENDL();
 }
 
 static void gcall(void)
@@ -261,6 +345,7 @@ static void gcall(void)
     } else {
         tcc_error("unimp: indirect call");
     }
+    oREM("\n");
 }
 
 ST_FUNC void gfunc_call(int nb_args)
@@ -308,7 +393,8 @@ ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret,
 }
 ST_FUNC void gfunc_return(CType *func_type)
 {
-    oSTR("return\n");
+    oREM("return");
+    oENDL();
     vtop--;
 }
 ST_FUNC void gfunc_epilog(void)

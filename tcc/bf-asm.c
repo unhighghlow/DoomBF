@@ -67,7 +67,9 @@ ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands,
             op = &operands[i];
             load(op->reg, &sv);
         }
+        oREM("asm");
     } else {
+        oENDL();
         for(i = 0; i < nb_outputs; i++) {
             SValue sv;
             op = &operands[i];
