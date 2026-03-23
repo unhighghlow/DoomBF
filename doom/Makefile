@@ -39,4 +39,4 @@ CRT_OBJECTS = crt/doom_crt.o crt/heap.o crt/printf.o
 
 LDFLAGS = -lX11
 lnx_doom: lnx_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
-
+	$(CC) $(LDFLAGS) $^ -o lnx_doom

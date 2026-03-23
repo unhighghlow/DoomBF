@@ -13,4 +13,12 @@ tmp
 ibf
 .ccls-cache
 *.o
+
 doom/lnx_doom
+
+bf/hackablebf/hackablebf
+bf/hackablebf/hackablebf-test
+
+lnx_doom
+ibf
+hackablebf
