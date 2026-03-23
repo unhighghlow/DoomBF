@@ -1,15 +1,31 @@
-all: lnx_doom ibf
+doom.b: bf-tcc doom
+	BFCC=$(abspath bf-tcc) $(MAKE) -C doom $@
+	cp doom/$@ .
+
+all: lnx_doom ibf hackablebf bf-tcc doom.b
 
 .PHONY: all
 
-lnx_doom:
-	$(MAKE) -C doom
-	cp doom/lnx_doom .
+lnx_doom: doom
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
 
-ibf:
-	$(MAKE) -C bf/industrial-bf
-	cp bf/industrial-bf/ibf .
+fake_bfk_doom: doom
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
 
-hackablebf:
-	$(MAKE) -C bf/hackablebf
-	cp bf/hackablebf/hackablebf .
+ibf: bf/industrial-bf
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
+
+hackablebf: bf/hackablebf
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
+
+bf-tcc: tcc
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
+
+frnt: frontend
+	$(MAKE) -C $^ $@
+	cp $^/$@ .

@@ -1,42 +1,56 @@
-CFLAGS = -std=c11
+CFLAGS = -std=c11 -g
 
-DOOM_OBJECTS_REL = \
-        am_map.o   d_items.o  \
-        d_main.o   d_net.o    \
-        doomdef.o  doomstat.o \
-        dstrings.o f_finale.o \
-        f_wipe.o   g_game.o   \
-        hu_lib.o   hu_stuff.o \
-        i_net.o    info.o     \
-        i_sound.o  i_system.o \
-        i_video.o  m_argv.o   \
-        m_bbox.o   m_cheat.o  \
-        m_fixed.o  m_menu.o   \
-        m_misc.o   m_random.o \
-        m_swap.o   p_ceilng.o \
-        p_doors.o  p_enemy.o  \
-        p_floor.o  p_inter.o  \
-        p_lights.o p_map.o    \
-        p_maputl.o p_mobj.o   \
-        p_plats.o  p_pspr.o   \
-        p_saveg.o  p_setup.o  \
-        p_sight.o  p_spec.o   \
-        p_switch.o p_telept.o \
-        p_tick.o   p_user.o   \
-        r_bsp.o    r_data.o   \
-        r_draw.o   r_main.o   \
-        r_plane.o  r_segs.o   \
-        r_sky.o    r_things.o \
-        sounds.o   s_sound.o  \
-        st_lib.o   st_stuff.o \
-        tables.o   v_video.o  \
-        wi_stuff.o w_wad.o    \
-        z_zone.o   DOOM.o
+DOOM_FILES_REL = \
+        am_map   d_items  \
+        d_main   d_net    \
+        doomdef  doomstat \
+        dstrings f_finale \
+        f_wipe   g_game   \
+        hu_lib   hu_stuff \
+        i_net    info     \
+        i_sound  i_system \
+        i_video  m_argv   \
+        m_bbox   m_cheat  \
+        m_fixed  m_menu   \
+        m_misc   m_random \
+        m_swap   p_ceilng \
+        p_doors  p_enemy  \
+        p_floor  p_inter  \
+        p_lights p_map    \
+        p_maputl p_mobj   \
+        p_plats  p_pspr   \
+        p_saveg  p_setup  \
+        p_sight  p_spec   \
+        p_switch p_telept \
+        p_tick   p_user   \
+        r_bsp    r_data   \
+        r_draw   r_main   \
+        r_plane  r_segs   \
+        r_sky    r_things \
+        sounds   s_sound  \
+        st_lib   st_stuff \
+        tables   v_video  \
+        wi_stuff w_wad    \
+        z_zone   DOOM
+DOOM_FILES = $(patsubst %, backend/%, $(DOOM_FILES_REL))
+DOOM_OBJECTS = $(patsubst %, %.o, $(DOOM_FILES))
+DOOM_SOURCES = $(patsubst %, %.c, $(DOOM_FILES))
 
-DOOM_OBJECTS = $(patsubst %, backend/%, $(DOOM_OBJECTS_REL))
+CRT_FILES = crt/doom_crt crt/heap crt/printf
+CRT_OBJECTS = $(patsubst %, %.o, $(CRT_FILES))
+CRT_SOURCES = $(patsubst %, %.c, $(CRT_FILES))
 
-CRT_OBJECTS = crt/doom_crt.o crt/heap.o crt/printf.o
-
-LDFLAGS = -lX11
+lnx_doom : LDFLAGS = -lX11
 lnx_doom: lnx_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
-	$(CC) $(LDFLAGS) $^ -o lnx_doom
+	$(CC) $(LDFLAGS) $^ -o $@
+
+bfk_doom.o: doom_wad.h
+
+fake_bfk_doom: bfk_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
+	$(CC) $(LDFLAGS) $^ -o $@
+
+doom.b: bfk_doom.c doom_wad.h $(DOOM_SOURCES) $(CRT_SOURCES)
+	$(BFCC) $(CFLAGS) $^ -o $@
+
+doom_wad.h: data/doom.wad
+	xxd -i $^ doom_wad.h
