@@ -12,3 +12,5 @@ bin
 tmp
 ibf
 .ccls-cache
+*.o
+doom/lnx_doom

@@ -1,6 +1,8 @@
 // gcc -O2 -Wall -Wextra -o linux_doom linux_doom.c -lX11
 // sudo apt-get install libx11-dev
 
+#define _GNU_SOURCE
+
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
@@ -10,7 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <crt/doom_env.h>  
+#include "crt/doom_env.h"
 
 struct DoomControlRegs g_LinuxDoomControlRegs;
 void *g_DoomHeapAddress = NULL;
