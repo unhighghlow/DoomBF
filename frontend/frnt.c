@@ -14,6 +14,40 @@ void read_until_image();
 short read_short();
 void full_read(char*, int);
 
+#define KEY_UP      0x01
+#define KEY_DOWN    0x02
+#define KEY_LEFT    0x03
+#define KEY_RIGHT   0x04
+#define KEY_ENTER   0x05
+#define KEY_SPACE   0x06
+#define KEY_CTRL    0x07
+#define KEY_ESC     0x08
+#define KEY_Y       0x09
+#define KEYUP       0xf0
+
+static void send_keyaction(int key, int action) {
+    int k = 0;
+    switch (key) {
+        case XK_Return:   k = KEY_ENTER; break;
+        case XK_Left:     k = KEY_LEFT; break;
+        case XK_Right:    k = KEY_RIGHT; break;
+        case XK_Up:       k = KEY_UP; break;
+        case XK_Down:     k = KEY_DOWN; break;
+        case XK_space:    k = KEY_SPACE; break;
+        case XK_Control_L:
+        case XK_Control_R: k = KEY_CTRL; break;
+        case XK_Escape:   k = KEY_ESC; break;
+        case XK_y:
+        case XK_Y:        k = KEY_Y; break;
+        default: break;
+    }
+    if (!k) return;
+
+    if (action == 2) k |= KEYUP;
+
+    putc(k, stdout);
+}
+
 int main(int argc, char *argv[]) {
         int cur_width;
         int cur_height;
@@ -104,6 +138,9 @@ int main(int argc, char *argv[]) {
                         cur_buf[i+3] = 0xff;
                 }
 
+                XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
+                XFlush(dpy);
+
                 while (XPending(dpy)) {
                     XEvent ev;
                     XNextEvent(dpy, &ev);
@@ -115,19 +152,19 @@ int main(int argc, char *argv[]) {
                         case KeyPress: {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
                             if (ks == XK_q) { running = 0; }
+                            send_keyaction(ks, 1);
                         } break;
                         case KeyRelease: {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
+                            send_keyaction(ks, 2);
                         } break;
                         case ClientMessage:
                         default:
                             break;
                     }
                 }
-
-                XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
-                XFlush(dpy);
-
+                putc(0, stdout);
+                fflush(stdout);
         }
 
         if (cur_buf) {
@@ -172,8 +209,7 @@ void read_until_image() {
         while (1) {
                 chr = read_byte();
                 if (chr)
-                        //printf("%c", chr);
-                        ;
+                        fprintf(stderr, "%c", chr);
                 else
                         break;
         }

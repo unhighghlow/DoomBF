@@ -1,6 +1,11 @@
+#ifndef _BF
+#  define _GNU_SOURCE
+#  include <sys/mman.h>
+#  include <time.h>
+#endif
+
 #include <stddef.h>
 #include <stdio.h>
-#include <sys/mman.h>
 #include <unistd.h>
 
 #include "crt/doom_env.h"
@@ -25,16 +30,35 @@ void EnvPutChar(int c) {
 #endif
 }
 
+char EnvGetCharBlock() {
+    char buf[1];
+    read(STDIN_FILENO, buf, 1);
+    return buf[0];
+}
+
 #define DOOM_WIDTH 640
 #define DOOM_HEIGHT 480
 #define PIXEL_WIDTH 4
 #define IMAGE_SIZE (DOOM_WIDTH * DOOM_HEIGHT * PIXEL_WIDTH)
+
+#define KEY_        0x0f
+#define KEY_UP      0x01
+#define KEY_DOWN    0x02
+#define KEY_LEFT    0x03
+#define KEY_RIGHT   0x04
+#define KEY_ENTER   0x05
+#define KEY_SPACE   0x06
+#define KEY_CTRL    0x07
+#define KEY_ESC     0x08
+#define KEY_Y       0x09
+#define KEYUP       0xf0
 
 static int  g_DoomWinWidth  = DOOM_WIDTH;
 static int  g_DoomWinHeight = DOOM_HEIGHT;
 
 void output_image(char*);
 void step_clock(int);
+void process_keyevent(char);
 
 int main(int argc, char *argv[]) {
     char pixels[IMAGE_SIZE];
@@ -70,13 +94,25 @@ int main(int argc, char *argv[]) {
     g_BrainfuckDoomControlRegs.height = DOOM_HEIGHT;
 
     CrtDoomInit();
+    output_image(pixels);
+    output_image(pixels);
+
+    char ev;
     while (1) {
-        step_clock(1000000);
+        while (1) {
+            ev = EnvGetCharBlock();
+            if (!ev) break;
+            process_keyevent(ev);
+        }
         g_BrainfuckDoomControlRegs.pixels = pixels;
-        g_BrainfuckDoomControlRegs.width  = DOOM_WIDTH;
-        g_BrainfuckDoomControlRegs.height = DOOM_HEIGHT;
+        g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
+        g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
         CrtDoomIteration();
         output_image(pixels);
+#ifndef _BF
+        usleep(10000);
+#endif
+        step_clock(20000);
     }
 }
 
@@ -108,5 +144,35 @@ void output_image(char *pixels) {
         if (!a) a = 1;
         /* skip alpha */
     }
-    EnvPutChar('\n');
+}
+
+void process_keyevent(char event) {
+    int key = event & KEY_;
+    int k = 0;
+    switch (key) {
+        case KEY_ENTER: k = CRT_DOOM_KEY_ENTER; break;
+        case KEY_LEFT:  k = CRT_DOOM_KEY_LEFT_ARROW; break;
+        case KEY_RIGHT: k = CRT_DOOM_KEY_RIGHT_ARROW; break;
+        case KEY_UP:    k = CRT_DOOM_KEY_UP_ARROW; break;
+        case KEY_DOWN:  k = CRT_DOOM_KEY_DOWN_ARROW; break;
+        case KEY_SPACE: k = CRT_DOOM_KEY_SPACE; break;
+        case KEY_CTRL:  k = CRT_DOOM_KEY_CTRL; break;
+        case KEY_ESC:   k = CRT_DOOM_KEY_ESCAPE; break;
+        case KEY_Y:     k = CRT_DOOM_KEY_Y; break;
+        default: break;
+    }
+    if (!k) return;
+
+    int action = 1;
+    if (event & KEYUP) {
+        action = 2;
+    }
+
+    for (size_t i = 0; i < sizeof(g_BrainfuckDoomControlRegs.keys) / sizeof(g_BrainfuckDoomControlRegs.keys[0]); i++) {
+        if (!g_BrainfuckDoomControlRegs.keys[i].action) {
+            g_BrainfuckDoomControlRegs.keys[i].action = action; // 1=down, 2=up
+            g_BrainfuckDoomControlRegs.keys[i].key    = k;
+            break;
+        }
+    }
 }
