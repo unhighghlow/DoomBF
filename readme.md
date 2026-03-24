@@ -105,6 +105,8 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 - https://codeberg.org/highghlow/esotope-bfc
 - https://github.com/tomhea/c2fj
 - https://github.com/aidantambling/Fuse-Wad-Explorer
+- https://people.math.sc.edu/Burkardt/c_src/paranoia/paranoia.html
+- https://web.archive.org/web/20260312041643/http://www.jhauser.us/arithmetic/SoftFloat-3/doc/SoftFloat.html
 
 ## Лицензия
 Код публичный: использовать/скачивать/модифицировать — свободно. (При необходимости добавим отдельный `LICENSE`.)
