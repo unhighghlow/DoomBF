@@ -80,7 +80,7 @@ uint8_t proc_open_loop(string program_in, uint64_t *ind, struct vector *program_
 
 uint8_t proc_close_loop(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t start_ind;
-        if (*ind & 0xff000000) {
+        if (*ind & 0xff00000000000000) {
                 printf("error: index overflow\n");
                 return 1;
         }
