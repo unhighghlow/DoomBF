@@ -134,8 +134,6 @@ void evaluate(uint8_t program[], CELL tape[]) {
         jumptable[','] = &&input;
         jumptable['['] = &&loopstart;
         jumptable[']'] = &&loopend;
-        jumptable['/'] = &&divide;
-        jumptable['\\'] = &&invdivide;
         jumptable['^'] = &&copy;
         jumptable['0'] = &&zero;
 #ifdef DEBUGGER
@@ -218,31 +216,6 @@ loopend:
         if (tape[dp%HOT_TAPE])
                 pc=CMD_wide_arg(inst);
         pc+=8;
-        NEXT
-
-divide:
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst))) {
-#ifdef DEBUGGER
-if (option_d) {
-                printf("warning: going into an infinite loop\n");
-}
-#endif
-                while (1) {}
-        }
-
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
-        pc+=2;
-        NEXT
-
-invdivide:
-        tape[dp%HOT_TAPE] = -tape[dp%HOT_TAPE];
-        
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst)))
-                while (1) {}
-
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
-
-        pc+=2;
         NEXT
 
 copy:
