@@ -4,6 +4,9 @@ ibf: evaluator/
 bld: loader/
 	${CC} loader/loader.c -g -O3 -o bld ${CCFLAGS}
 
+bpk: packer/
+	${CC} packer/packer.c -g -O3 -o bpk ${CCFLAGS}
+
 run: ibf
 	./ibf
 

@@ -160,3 +160,19 @@ make bld
 ```
 
 Generates the pagefiles needed to preload *input* onto `ibf`'s tape. `page_size_power` must match the `PAGE_SIZE_POWER` configured in `ibf`
+
+# bpk
+*Brainfuck compression format extractor*
+```
+make bpk
+./bpk < compressed.bpk > out.b
+```
+
+The compression format is as follows:
+- A hexadecimal number surrounded by `{...}` repeats the last character that many times
+- All other characters remain unchanged
+
+Examples:
+- `>{5}+` -> `>>>>>+`
+- `+{21}.` -> outputs an exclamation mark
+
