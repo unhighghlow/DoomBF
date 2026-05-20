@@ -45,16 +45,16 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
 
                 if (!cur)
                         break; // If reached EOF, exit
-
-                if (cur != inst
-                 && !is_ignored(cur))
+                if (is_ignored(cur))
+                        continue;
+                if (cur != inst)
                         break;
 
-                if (count >= 256)
+                count++;
+                if (count >= 256) {
+                        (*ind)++;
                         break;
-
-                if (!is_ignored(cur))
-                        count++;
+                }
         }
         vector_push(program_out, inst);
         vector_push(program_out, (uint8_t)count-1);
