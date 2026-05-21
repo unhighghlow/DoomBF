@@ -126,7 +126,7 @@ uint64_t count_nonempty_lines(string addrmap, uint64_t length) {
 }
 
 void load_addrmap(string filename) {
-        printf("loading addrmap: %s. ", filename);
+        printf("loading addrmap: %s.\n", filename);
         character line[65] = {0};
         uint64_t ind;
         uint64_t lineind = 0;
@@ -489,17 +489,15 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
         switch (cmd) {
                 case '+':
                 case '-':
+                        printf("%c %10u\n", cmd, CMD_rol_arg(inst));
+                        return 2;
                 case '>':
                 case '<':
-                        printf("%c %3u\n", cmd, CMD_rol_arg(inst));
-                        return 2;
-                case '/':
-                case '\\':
-                        printf("%c %3d\n", cmd, CMD_rol_arg(inst));
-                        return 2;
+                        printf("%c %10u\n", cmd, CMD_rol_arg_big(inst));
+                        return 1 + ROLLING_SIZE;
                 case '^':
-                        printf("%c %5d %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));
-                        return 4;
+                        printf("%c %10d %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));
+                        return 2 + ROLLING_SIZE;
                 case '[':
                 case ']':
                         printf("%c %lx\n", cmd, CMD_wide_arg(inst)+8);
