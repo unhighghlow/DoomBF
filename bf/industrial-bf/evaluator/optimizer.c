@@ -165,6 +165,26 @@ uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, 
         return 0;
 }
 
+#define write_change { \
+        int8_t key_found = 0; \
+        uint64_t key_ind = 0; \
+        for (uint64_t i = 0; i < offset_values.length; i++) { \
+                if (vector_read_ex(&offset_keys, ROLLING_TYPE, i) == offset) { \
+                        key_found = 1; \
+                        key_ind = i; \
+                        break; \
+                } \
+        } \
+        if (!key_found) { \
+                vector_push_ex(&offset_keys, ROLLING_TYPE, offset); \
+                vector_push_ex(&offset_values, int8_t, change); \
+        } else { \
+                change += vector_read_ex(&offset_values, int8_t, key_ind); \
+                vector_write_ex(&offset_values, int8_t, key_ind, change); \
+        } \
+        change = 0; \
+}
+
 uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint64_t wind = *ind;
 
@@ -179,40 +199,24 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
 
         ROLLING_TYPE offset = 0;
 
+        int8_t change = 0;
         while (program_in[++wind/*skipping the loop opening*/] != ']') {
-                int8_t change;
-                int8_t key_found;
-                uint64_t key_ind;
                 switch (program_in[wind]) {
-                        case '<': offset--; break;
-                        case '>': offset++; break;
-                        case '+':
-                                change = 1;
-                                goto write_change;
-                        case '-':
-                                change = -1;
-                                goto write_change;
-                        write_change:
-                                if (offset >= ROLLING_TYPE_MAX) return -1;
+                        case '<':
+                                if (change != 0) write_change
+                                offset--;
                                 if (offset <= ROLLING_TYPE_MIN) return -1;
-
-                                key_found = 0;
-
-                                for (uint64_t i = 0; i < offset_values.length; i++) {  // slow
-                                        if (vector_read_ex(&offset_keys, ROLLING_TYPE, i) == offset) {
-                                                key_found = 1;
-                                                key_ind = i;
-                                                break;
-                                        }
-                                }
-                                if (!key_found) {
-                                        vector_push_ex(&offset_keys, ROLLING_TYPE, offset);
-                                        vector_push_ex(&offset_values, int8_t, change);
-                                } else {
-                                        change += vector_read_ex(&offset_values, int8_t, key_ind);
-                                        vector_write_ex(&offset_values, int8_t, key_ind, change);
-                                }
-
+                                break;
+                        case '>':
+                                if (change != 0) write_change
+                                offset++;
+                                if (offset >= ROLLING_TYPE_MAX) return -1;
+                                break;
+                        case '+':
+                                change++;
+                                break;
+                        case '-':
+                                change--;
                                 break;
                         case '[':
                         case ']':
@@ -221,6 +225,7 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 return -1;
                 }
         }
+        if (change != 0) write_change
         wind++;
 
         if (offset != 0) /* unbalanced loop */
