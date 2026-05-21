@@ -4,6 +4,12 @@
 
 // #define DISABLE_ROLLING /* Disables common statement shorthands, such as ^ or 0 */
 
+// ROLLING_TYPE should be signed
+typedef int32_t ROLLING_TYPE;
+#define ROLLING_SIZE 4
+#define ROLLING_TYPE_MAX INT32_MAX
+#define ROLLING_TYPE_MIN INT32_MIN
+
 // #define DEBUGGER /* Enables the -d option
 //                     Disabled by default because it
 //                     slows down execution even if -d
