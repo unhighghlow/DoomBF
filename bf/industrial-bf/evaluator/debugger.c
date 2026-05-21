@@ -495,7 +495,7 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                         return 2;
                 case '/':
                 case '\\':
-                        printf("%c %3d\n", cmd, CMD_simple_arg(inst));
+                        printf("%c %3d\n", cmd, CMD_rol_arg(inst));
                         return 2;
                 case '^':
                         printf("%c %5d %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));

@@ -174,15 +174,15 @@ minus:
 
 
 right:
-        dp+=CMD_rol_arg(inst);
+        dp+=CMD_rol_arg_big(inst);
         CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
-        pc+=2;
+        pc += 1 + ROLLING_SIZE;
         NEXT
 
 left:
-        dp-=CMD_rol_arg(inst);
+        dp-=CMD_rol_arg_big(inst);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
-        pc+=2;
+        pc += 1 + ROLLING_SIZE;
         NEXT
 
 output:

@@ -27,11 +27,40 @@ struct loop_data {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
+uint8_t proc_rol_small(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+        uint8_t inst = program_in[*ind];
+        uint8_t cur;
+        uint8_t count = 1;
+
+#ifdef DEBUGGER
+#define is_ignored(a) (is_whitespace(a) && a != '\n')
+#else
+#define is_ignored is_comment
+#endif
+
+        while (1) {
+                (*ind)++;
+                cur = program_in[*ind];
+
+                if (!cur)
+                        break; // If reached EOF, exit
+                if (is_ignored(cur))
+                        continue;
+                if (cur != inst)
+                        break;
+                count++;
+        }
+        if (count != 0) {
+                vector_push(program_out, inst);
+                vector_push(program_out, count);
+        }
+        return 0;
+}
+
 uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
         uint8_t inst = program_in[*ind];
-        unsigned ind1 = *ind;
         uint8_t cur;
-        uint32_t count = 1;
+        ROLLING_TYPE count = 1;
 
 #ifdef DEBUGGER
 #define is_ignored(a) (is_whitespace(a) && a != '\n')
@@ -51,13 +80,13 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
                         break;
 
                 count++;
-                if (count >= 256) {
+                if (count >= ROLLING_TYPE_MAX) {
                         (*ind)++;
                         break;
                 }
         }
         vector_push(program_out, inst);
-        vector_push(program_out, (uint8_t)count-1);
+        _vector_push_multibyte_little(program_out, count, sizeof(ROLLING_TYPE));
         return 0;
 }
 
@@ -232,9 +261,10 @@ if (option_d)
 }
 
         switch (program_in[*ind]) {
-                case '+': case '-': case '>': case '<':
+                case '+': case '-':
+                        CALL_PROC(proc_rol_small);
+                case '>': case '<':
                         CALL_PROC(proc_rol_inst);
-
                 case '.': case ',':
                         CALL_PROC(proc_unrol_inst);
 #ifdef DEBUGGER

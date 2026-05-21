@@ -59,5 +59,13 @@ void _vector_push_multibyte(struct vector *out, uint64_t item, uint8_t len) {
         }
 }
 
+void _vector_push_multibyte_little(struct vector *out, uint64_t item, uint8_t len) {
+        for (int32_t i = 0; i < len; i++) {
+                uint8_t c = item>>(8*i);
+                vector_push(out, c);
+        }
+}
+
+
 #define vector_read_ex(vec, type, ind) (type)_ntoh_custom(*(type*)&(((vec)->ptr)[(ind)*(sizeof(type))]), sizeof(type))
 #define vector_write_ex(vec, type, ind, val) *(type*)&(((vec)->ptr)[(ind)*(sizeof(type))]) = (type)_hton_custom((val), sizeof(type))
