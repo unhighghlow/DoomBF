@@ -6,9 +6,9 @@
 
 // ROLLING_TYPE should be signed
 typedef int32_t ROLLING_TYPE;
-#define ROLLING_SIZE 4
 #define ROLLING_TYPE_MAX INT32_MAX
 #define ROLLING_TYPE_MIN INT32_MIN
+#define ROLLING_SIZE sizeof(ROLLING_TYPE)
 
 // #define DEBUGGER /* Enables the -d option
 //                     Disabled by default because it

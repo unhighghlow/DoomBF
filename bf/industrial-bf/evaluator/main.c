@@ -220,24 +220,24 @@ loopend:
 
 copy:
 #define COPY(dir, invdir) \
-        dp += CMD_copy_offset(inst); \
+        dp += offset; \
         CHECK_PAGE_TRANSITION(tape, dir, dp, last_page); \
         tape[dp%HOT_TAPE] += val; \
-        dp -= CMD_copy_offset(inst); \
-        CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page); \
-        pc+=4; \
-        NEXT
+        dp -= offset; \
+        CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page);
 
+
+        ROLLING_TYPE offset = CMD_copy_offset(inst);
         CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
 
         if (val) {
-                if (CMD_copy_offset(inst) > 0) {
+                if (offset > 0) {
                         COPY(1, -1)
                 } else {
                         COPY(-1, 1)
                 }
         }
-        pc+=4;
+        pc += 2 + ROLLING_SIZE;
         NEXT
 
 zero:
