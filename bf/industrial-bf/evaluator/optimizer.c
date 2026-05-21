@@ -191,6 +191,11 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         struct vector offset_keys;   // ROLLING_TYPE (signed)
         struct vector offset_values; // char (signed)
 
+#define destruct { \
+        vector_drop(&offset_keys); \
+        vector_drop(&offset_values); \
+}
+
         vector_init(&offset_keys, 0);
         vector_init(&offset_values, 0);
 
@@ -205,12 +210,18 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                         case '<':
                                 if (change != 0) write_change
                                 offset--;
-                                if (offset <= ROLLING_TYPE_MIN) return -1;
+                                if (offset <= ROLLING_TYPE_MIN) {
+                                        destruct
+                                        return -1;
+                                }
                                 break;
                         case '>':
                                 if (change != 0) write_change
                                 offset++;
-                                if (offset >= ROLLING_TYPE_MAX) return -1;
+                                if (offset >= ROLLING_TYPE_MAX) {
+                                        destruct
+                                        return -1;
+                                }
                                 break;
                         case '+':
                                 change++;
@@ -222,19 +233,23 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                         case ']':
                         case ',':
                         case '.':
+                                destruct
                                 return -1;
                 }
         }
         if (change != 0) write_change
         wind++;
 
-        if (offset != 0) /* unbalanced loop */
+        if (offset != 0) { /* unbalanced loop */
+                destruct
                 return -1;
+        }
 
 
         /* output the instructions */
 
         if ((int8_t)offset_values.ptr[0] != -1) {
+                destruct
                 return -1;
         }
 

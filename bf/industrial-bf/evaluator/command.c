@@ -10,7 +10,7 @@ static inline ROLLING_TYPE CMD_rol_arg_big(uint8_t *inst) {
         return *((ROLLING_TYPE *)(inst + 1));
 }
 
-static inline int16_t CMD_copy_offset(uint8_t *inst) {
+static inline ROLLING_TYPE CMD_copy_offset(uint8_t *inst) {
         return _ntoh_custom(*(ROLLING_TYPE*)&inst[1], ROLLING_SIZE);
 }
 
