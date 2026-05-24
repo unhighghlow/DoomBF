@@ -33,12 +33,31 @@ struct revertable_stream {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-size_t read_revertable(character *ptr, struct revertable_stream *stream) {
+#define READ_BLOCK_SIZE 0x10000
+
+static inline size_t read_revertable_direct(character *ptr, struct revertable_stream *stream) {
+        static character buf[READ_BLOCK_SIZE];
+        size_t read = 0;
+        while (1) {
+                read = fread(buf, 1, READ_BLOCK_SIZE, stream->fd);
+                if (read) break;
+
+                if (errno == EAGAIN || !feof(stream->fd)) {
+                        continue;
+                }
+                return 0;
+        }
+        if (read == 0) return 0;
+        vector_append(stream->pushback, buf, read);
+        *ptr = buf[0];
+        return 1;
+}
+
+static inline size_t read_revertable(character *ptr, struct revertable_stream *stream) {
         if (stream->pushback_pos >= (stream->pushback)->length) {
-                if (!fread(ptr, 1, 1, stream->fd)) {
+                if (!read_revertable_direct(ptr, stream)) {
                         return 0;
                 }
-                vector_push(stream->pushback, *ptr);
                 stream->pushback_pos++;
                 return 1;
         }
@@ -46,12 +65,11 @@ size_t read_revertable(character *ptr, struct revertable_stream *stream) {
         return 1;
 }
 
-size_t peek_revertable(character *ptr, struct revertable_stream *stream) {
+static inline size_t peek_revertable(character *ptr, struct revertable_stream *stream) {
         if (stream->pushback_pos >= (stream->pushback)->length) {
-                if (!fread(ptr, 1, 1, stream->fd)) {
+                if (!read_revertable_direct(ptr, stream)) {
                         return 0;
                 }
-                vector_push(stream->pushback, *ptr);
                 return 1;
         }
         *ptr = stream->pushback->ptr[stream->pushback_pos];
@@ -220,7 +238,7 @@ uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_o
         vector_push_ex(&offset_keys, int16_t, 0);
         vector_push(&offset_values, 0);
 
-        int16_t offset = 0;
+        int32_t offset = 0;
 
         while (1) {
                 READ_CHAR_NOEOF(&chr, program_in);
@@ -239,6 +257,9 @@ uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_o
                                 change = -1;
                                 goto write_change;
                         write_change:
+                                if (offset >= INT16_MAX) return -1;
+                                if (offset <= INT16_MIN) return -1;
+
                                 key_found = 0;
 
                                 for (uint64_t i = 0; i < offset_keys.length/2; i++) {
@@ -281,6 +302,8 @@ uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_o
                 vector_push(program_out, offset_values.ptr[i]);
         } 
         vector_push(program_out, '0');
+        vector_drop(&offset_keys);
+        vector_drop(&offset_values);
 
         return 0;
 }
@@ -297,6 +320,8 @@ uint8_t process_instruction(struct revertable_stream *program_in, struct vector 
         size_t pos = program_in->pushback_pos; \
         int8_t out = fn(program_in, program_out, ld); \
         if (out != -1) { \
+                vector_truncate_start(program_in->pushback, program_in->pushback_pos); \
+                program_in->pushback_pos = 0; \
                 return out; \
         } else { \
                 program_in->pushback_pos = pos; \
@@ -305,7 +330,7 @@ uint8_t process_instruction(struct revertable_stream *program_in, struct vector 
 
         character chr;
         uint8_t rout = peek_revertable(&chr, program_in);
-        if (feof(program_in->fd)) {
+        if (rout == 0 && feof(program_in->fd)) {
                 /* EOF */
                 return -1;
         }

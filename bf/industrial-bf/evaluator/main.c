@@ -24,8 +24,8 @@
 typedef char* string;
 typedef char character;
 
-uint8_t option_d;
-uint8_t option_a;
+uint8_t option_d = 0;
+uint8_t option_a = 0;
 
 #include "util.c"
 #include "vector.c"

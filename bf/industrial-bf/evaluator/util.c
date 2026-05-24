@@ -128,7 +128,7 @@ uint8_t is_comment(character inst) {
         );
 }
 
-uint8_t is_whitespace(character inst) {
+static inline uint8_t is_whitespace(character inst) {
         return (
                 inst == ' '
              || inst == '\t'
