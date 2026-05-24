@@ -7,6 +7,8 @@ char parse_digit(char digit) {
                 out = digit-'0';
         } else if (digit >= 'a' && digit <= 'f'){
                 out = digit-'a'+0xa;
+        } else if (digit >= 'A' && digit <= 'F'){
+                out = digit-'A'+0xa;
         } else {
                 out = -1;
         }
