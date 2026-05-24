@@ -493,6 +493,12 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '<':
                         printf("%c %3u\n", cmd, CMD_rol_arg(inst));
                         return 2;
+                case 'r':
+                        printf("%c %lx\n", '>', CMD_wide_arg(inst));
+                        return 8;
+                case 'l':
+                        printf("%c %lx\n", '<', CMD_wide_arg(inst));
+                        return 8;
                 case '/':
                 case '\\':
                         printf("%c %3d\n", cmd, CMD_simple_arg(inst));

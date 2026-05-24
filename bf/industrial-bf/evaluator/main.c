@@ -136,7 +136,9 @@ void evaluate(uint8_t program[], CELL tape[]) {
         jumptable['+'] = &&plus;
         jumptable['-'] = &&minus;
         jumptable['>'] = &&right;
+        jumptable['r'] = &&right_wide;
         jumptable['<'] = &&left;
+        jumptable['l'] = &&left_wide;
         jumptable['.'] = &&output;
         jumptable[','] = &&input;
         jumptable['['] = &&loopstart;
@@ -186,10 +188,22 @@ right:
         pc+=2;
         NEXT
 
+right_wide:
+        dp+=CMD_wide_arg(inst);
+        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        pc+=8;
+        NEXT
+
 left:
         dp-=CMD_rol_arg(inst);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=2;
+        NEXT
+
+left_wide:
+        dp-=CMD_wide_arg(inst);
+        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        pc+=8;
         NEXT
 
 output:

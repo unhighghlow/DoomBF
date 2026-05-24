@@ -10,6 +10,10 @@ static inline uint16_t CMD_rol_arg(uint8_t *inst) {
         return ((uint16_t)inst[1])+1;
 }
 
+static inline uint64_t CMD_rol_wide(uint8_t *inst) {
+        return ntohl((*(uint32_t*)&inst[0]))&0x00ffffff;
+}
+
 static inline int16_t CMD_copy_offset(uint8_t *inst) {
         return ntohs(*(uint16_t*)&inst[1]);
 }

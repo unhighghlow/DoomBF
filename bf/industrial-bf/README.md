@@ -126,32 +126,6 @@ The interpreter uses a different set of commands internally, automatically conve
 
 Each instruction is 1 to 8 bytes long. The first byte always represents the kind of instruction it is, and is used to determine the length.
 
-The instructions are as follows:
-
-```
-+-------------------------------+
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|===============================|
-| + |VAL|   .   .   .   .   .   . Add VAL + 1 to the current cell
-| - |VAL|   .   .   .   .   .   . Subtract VAL + 1 from the current cell
-| < |VAL|   .   .   .   .   .   . Move VAL + 1 cells to the left
-| > |VAL|   .   .   .   .   .   . Move VAL + 1 cells to the right
-| / |VAL|   .   .   .   .   .   . Divide the current cell by VAL. Go into an infinite loop if it is not divisible and VAL is a power of 2.
-| \ |VAL|   .   .   .   .   .   . The same as /, but divides -(current cell)
-| ^ |OFFSET |VAL|   .   .   .   . Store (current cell)*I_VAL at offset I_OFFSET (relative to current data pointer)
-| [ | END INDEX                 | Start a loop (END INDEX indicates the address of the matching ])
-| ] | BEGINNING INDEX           | End a loop
-| ! | EXPECTED VALUE            | Terminate if (current cell) is not EXPECTED VALUE
-| @ | EXPECTED VALUE            | Terminate if the data pointer is not EXPECTED VALUE
-| 0 |   .   .   .   .   .   .   . Set the current cell to zero
-| . |   .   .   .   .   .   .   . Output the current cell
-| # |   .   .   .   .   .   .   . Breakpoint (see Debugger)
-|\0 |   .   .   .   .   .   .   . Terminate the program (only appears at the end)
-+-------------------------------+
-```
-
-These instructions are subject to change. The `I_` before a variable annotates that it is signed (the default is unsigned). All values are stored with network byte order (big-endian). The instruction character (first byte) matches the ASCII character used for the instruction, as well as the symbol displayed in the debugger (the `\0` instruction is a zero-byte, and is displayed as `end`).
-
 # bld
 *The ibf preloader*
 ```

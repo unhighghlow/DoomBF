@@ -109,6 +109,9 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
 uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character inst;
         READ_CHAR_NOEOF(&inst, program_in);
+        uint8_t allow_wide = inst == '>' || inst == '<';
+        uint64_t wide_limit = 1<<PAGE_SIZE_POWER;
+
         character cur;
         uint32_t count = 1;
 
@@ -128,7 +131,10 @@ uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *progr
                  && !is_ignored(cur)) 
                         break;
 
-                if (count >= 256)
+                if (count >= 256 && !allow_wide)
+                        break;
+
+                if (count >= wide_limit)
                         break;
 
                 READ_CHAR(&cur, program_in);
@@ -136,8 +142,18 @@ uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *progr
                 if (!is_ignored(cur))
                         count++;
         }
-        vector_push(program_out, inst);
-        vector_push(program_out, (uint8_t)count-1);
+        if (count <= 256) {
+                vector_push(program_out, inst);
+                vector_push(program_out, (uint8_t)count-1);
+        } else {
+                if (inst == '>') inst = 'r';
+                if (inst == '<') inst = 'l';
+                vector_push_ex(
+                        program_out,
+                        uint64_t,
+                        count | (((int64_t)inst) << (8*7))
+                );
+        }
         return 0;
 }
 
