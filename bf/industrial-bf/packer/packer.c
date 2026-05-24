@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
                 if (reading_number && buf[0] == '}') {
                         if (!rep_count) rep_count = 1;
                         while (--rep_count) {
-                                printf("%c", last_char);
+                                putc(last_char, stdout);
                         }
                         reading_number = 0;
                 }
