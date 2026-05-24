@@ -26,6 +26,7 @@ typedef char character;
 
 uint8_t option_d = 0;
 uint8_t option_a = 0;
+uint8_t option_o = 0;
 
 #include "util.c"
 #include "vector.c"
@@ -45,7 +46,7 @@ string read_file(string filename, uint64_t *program_length);
 void evaluate(uint8_t program[], CELL *tape);
 
 void usage(string exec) {
-        fprintf(stderr, "usage: %s [-da] [--] program.b\n",
+        fprintf(stderr, "usage: %s [-dao] [--] program.b\n",
                 exec);
         exit(1);
 }
@@ -55,14 +56,18 @@ int32_t main(int32_t argc, string argv[]) {
         string addrmap_filename;
         unsigned char opt;
 
-        while ((opt = getopt(argc, argv, "da")) != 0xff) {
+        while ((opt = getopt(argc, argv, "dao")) != 0xff) {
                 switch (opt) {
                     case 'd':
+                    case 'o':
 #ifndef DEBUGGER
                         fprintf(stderr, "This program was compiled without debugger support\n");
                         exit(1);
 #endif
-                        option_d = 1;
+                        if (opt == 'd')
+                                option_d = 1;
+                        else
+                                option_o = 1;
                         break;
                     case 'a':
 #ifndef ASSERTS
@@ -80,7 +85,10 @@ int32_t main(int32_t argc, string argv[]) {
         filename = argv[optind];
         
         FILE *fd = fopen(filename, "r");
-        if (!fd) exit(1);
+        if (!fd) {
+                perror("opening file");
+                exit(1);
+        }
 
 #ifdef DEBUGGER
 if (option_d) {
@@ -186,7 +194,7 @@ left:
 
 output:
 #ifdef DEBUGGER
-if (option_d) {
+if (option_d && !option_o) {
         debugger_out(tape[dp%HOT_TAPE]);
 } else {
         putchar(tape[dp%HOT_TAPE]);
