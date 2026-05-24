@@ -15,7 +15,9 @@ char parse_digit(char digit) {
         return out;
 }
 
+#define MAX_BLOCK 0x10000
 int main(int argc, char *argv[]) {
+        char pbuf[MAX_BLOCK+1];
         char buf[1];
         char digit;
         char last_char = ' ';
@@ -26,8 +28,19 @@ int main(int argc, char *argv[]) {
         while (fread(buf, 1, 1, stdin)) {
                 if (reading_number && buf[0] == '}') {
                         if (!rep_count) rep_count = 1;
-                        while (--rep_count) {
-                                putc(last_char, stdout);
+                        rep_count--;
+                        while (rep_count) {
+                                unsigned int block = rep_count;
+                                if (block > MAX_BLOCK) {
+                                        block = MAX_BLOCK;
+                                }
+                                rep_count -= block;
+                                unsigned int pos = 0;
+                                while (pos < block) {
+                                        pbuf[pos++] = last_char;
+                                }
+                                pbuf[pos] = 0;
+                                fputs(pbuf, stdout);
                         }
                         reading_number = 0;
                 }
