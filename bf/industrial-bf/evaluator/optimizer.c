@@ -27,10 +27,35 @@ struct loop_data {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        uint8_t inst = program_in[*ind];
-        unsigned ind1 = *ind;
-        uint8_t cur;
+#define READ_CHAR(ptr, stream) { \
+        if (fread(ptr, 1, 1, stream) != 1) { \
+                if (feof(stream)) { \
+                        *ptr = EOF; \
+                } else { \
+                        perror("reading file"); \
+                        return 1; \
+                } \
+        } \
+}
+
+#define READ_CHAR_NOEOF(ptr, stream) { \
+        READ_CHAR(ptr, stream); \
+        if (*(ptr) == EOF) { \
+                printf("error: unexpected EOF\n"); \
+                return 1; \
+        } \
+}
+
+#define PEEK_CHAR(ptr, stream) { \
+        size_t pos = ftell(stream); \
+        READ_CHAR(ptr, stream); \
+        fseek(stream, pos, SEEK_SET); \
+}
+
+uint8_t proc_rol_inst(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character inst;
+        READ_CHAR_NOEOF(&inst, program_in);
+        character cur;
         uint32_t count = 1;
 
 #ifdef DEBUGGER
@@ -40,10 +65,9 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
 #endif
 
         while (1) {
-                (*ind)++;
-                cur = program_in[*ind];
+                PEEK_CHAR(&cur, program_in);
 
-                if (!cur)
+                if (cur == EOF)
                         break; // If reached EOF, exit
 
                 if (cur != inst
@@ -53,6 +77,8 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
                 if (count >= 256)
                         break;
 
+                READ_CHAR(&cur, program_in);
+
                 if (!is_ignored(cur))
                         count++;
         }
@@ -61,26 +87,32 @@ uint8_t proc_rol_inst(string program_in, uint64_t *ind, struct vector *program_o
         return 0;
 }
 
-uint8_t proc_unrol_inst(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        vector_push(program_out, program_in[*ind]);
-        (*ind)++;
+uint8_t proc_unrol_inst(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character chr;
+        READ_CHAR_NOEOF(&chr, program_in);
+        vector_push(program_out, chr);
         return 0;
 }
 
-uint8_t proc_open_loop(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_open_loop(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character chr;
+        READ_CHAR_NOEOF(&chr, program_in);
+
         LD_PUSH(ld, program_out->length);
         vector_push_ex(
                 program_out,
                 uint64_t,
                 0xaaaaaaaaaaaaaaaa
         ); // Mock instruction
-        (*ind)++;
         return 0;
 }
 
-uint8_t proc_close_loop(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_close_loop(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character chr;
+        READ_CHAR_NOEOF(&chr, program_in);
+
         uint64_t start_ind;
-        if (*ind & 0xff00000000000000) {
+        if (program_out->length & 0xff00000000000000) {
                 printf("error: index overflow\n");
                 return 1;
         }
@@ -97,11 +129,13 @@ uint8_t proc_close_loop(string program_in, uint64_t *ind, struct vector *program
                 uint64_t,
                 start_ind | (((int64_t)']') << (8*7))
         );
-        (*ind)++;
         return 0;
 }
 
-uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
+uint8_t proc_assert(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        printf("not implemented: proc_assert\n");
+        return 1;
+        /*
         uint8_t inst = program_in[*ind];
         int8_t digit;
         (*ind)++;
@@ -117,27 +151,29 @@ uint8_t proc_assert(string program_in, uint64_t *ind, struct vector *program_out
                 val | (((int64_t)inst) << (8*7))
         );
         return 0;
+        */
 }
 
-uint8_t proc_zero(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        uint64_t wind = *ind;
+uint8_t proc_zero(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character chr;
+        READ_CHAR_NOEOF(&chr, program_in);
 
-        wind++;
+        READ_CHAR_NOEOF(&chr, program_in);
         if (
-                program_in[wind] != '-' &&
-                program_in[wind] != '+'
+                chr != '-' &&
+                chr != '+'
         ) return -1;
 
-        if (program_in[++wind] != ']') return -1;
+        READ_CHAR_NOEOF(&chr, program_in);
+        if (chr != ']') return -1;
 
         vector_push(program_out, '0');
-
-        *ind = wind+1;
         return 0;
 }
 
-uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-        uint64_t wind = *ind;
+uint8_t proc_move(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
+        character chr;
+        READ_CHAR_NOEOF(&chr, program_in);
 
         struct vector offset_keys;   // short (signed)
         struct vector offset_values; // char (signed)
@@ -150,11 +186,14 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
 
         int16_t offset = 0;
 
-        while (program_in[++wind/*skipping the loop opening*/] != ']') {
+        while (1) {
+                READ_CHAR_NOEOF(&chr, program_in);
+                if (chr == ']') break;
+
                 int8_t change;
                 int8_t key_found;
                 uint64_t key_ind;
-                switch (program_in[wind]) {
+                switch (chr) {
                         case '<': offset--; break;
                         case '>': offset++; break;
                         case '+':
@@ -189,7 +228,6 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
                                 return -1;
                 }
         }
-        wind++;
 
         if (offset != 0) /* unbalanced loop */
                 return -1;
@@ -208,27 +246,47 @@ uint8_t proc_move(string program_in, uint64_t *ind, struct vector *program_out, 
         } 
         vector_push(program_out, '0');
 
-        *ind = wind;
         return 0;
 }
 
-uint8_t process_instruction(string program_in, uint64_t *ind, struct vector *program_out, struct loop_data *ld) {
-#ifdef DEBUGGER
-if (option_d)
-        sourcemap_process(
-                program_in[*ind],
-                program_out->length
-        );
-#endif
+/* return values: -1 -- EOF
+ *                 0 -- success
+ *             other -- error */
+uint8_t process_instruction(FILE *program_in, struct vector *program_out, struct loop_data *ld) {
 
+/* fn return values: -1 -- no match occured
+ *                    0 -- success
+ *                other -- error */
 #define CALL_PROC(fn) { \
-        int8_t out = fn(program_in, ind, program_out, ld); \
+        size_t pos = ftell(program_in); \
+        int8_t out = fn(program_in, program_out, ld); \
         if (out != -1) { \
                 return out; \
+        } else { \
+                fseek(program_in, pos, SEEK_SET); \
         } \
 }
 
-        switch (program_in[*ind]) {
+        character chr;
+        uint8_t rout = fread(&chr, 1, 1, program_in);
+        if (feof(program_in)) {
+                /* EOF */
+                return -1;
+        }
+        if (rout != 1) {
+                perror("reading file");
+                return 1;
+        }
+        fseek(program_in, -1, SEEK_CUR);
+
+#ifdef DEBUGGER
+if (option_d)
+        sourcemap_process(
+                chr,
+                program_out->length
+        );
+#endif
+        switch (chr) {
                 case '+': case '-': case '>': case '<':
                         CALL_PROC(proc_rol_inst);
 
@@ -236,9 +294,9 @@ if (option_d)
                         CALL_PROC(proc_unrol_inst);
 #ifdef DEBUGGER
                 case '#':
-#endif
                         if (!option_d) goto ignore;
                         CALL_PROC(proc_unrol_inst);
+#endif
                 case '[':
 #ifndef DISABLE_ROLLING
                         CALL_PROC(proc_zero);
@@ -256,12 +314,12 @@ if (option_d)
 ignore:
                 default:
                         // Comment
-                        (*ind)++;
+                        fread(&chr, 1, 1, program_in);
                         return 0;
         }
 }
 
-uint8_t *optimize(string program_in) {
+uint8_t *optimize(FILE *program_in) {
         struct vector program_out = vector_create(0);
 
         uint64_t ind = 0;
@@ -278,9 +336,13 @@ if (option_d) {
         printf("constructing program...\n");
 }
 #endif
-        while (program_in[ind]) {
-                uint8_t out = process_instruction(program_in, &ind, &program_out, &ld);
+        while (1) {
+                int8_t out = process_instruction(program_in, &program_out, &ld);
+                if (out == -1) {
+                        break;
+                }
                 if (out) {
+                        printf("unable to process file: %d\n", out);
                         exit(out);
                 }
         }

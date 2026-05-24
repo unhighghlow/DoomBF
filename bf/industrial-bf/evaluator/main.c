@@ -79,16 +79,15 @@ int32_t main(int32_t argc, string argv[]) {
         if (optind != argc - 1) usage(argv[0]);
         filename = argv[optind];
         
-        uint64_t program_length;
-        string program_raw = (string) read_file(filename, &program_length);
-        if (!program_raw) exit(1);
+        FILE *fd = fopen(filename, "r");
+        if (!fd) exit(1);
 
 #ifdef DEBUGGER
 if (option_d) {
         sourcemap_init();
 }
 #endif
-        uint8_t *program = optimize(program_raw);
+        uint8_t *program = optimize(fd);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
         memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
