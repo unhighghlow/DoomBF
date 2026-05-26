@@ -10,11 +10,13 @@ let
     };
   };
 in
-crossPkgs.mkShell {
+pkgs.mkShell {
   nativeBuildInputs = [
     crossPkgs.stdenv.cc
     pkgs.gcc
     pkgs.gnumake
+    pkgs.libX11.dev
+    pkgs.libX11
     (pkgs.python3.withPackages (p: with p; [
       pyelftools
       capstone

@@ -25,7 +25,7 @@ void full_read(char*, int);
 #define KEY_Y       0x09
 #define KEYUP       0xf0
 
-static void send_keyaction(int key, int action) {
+static int parse_key(int key) {
     int k = 0;
     switch (key) {
         case XK_Return:   k = KEY_ENTER; break;
@@ -41,6 +41,10 @@ static void send_keyaction(int key, int action) {
         case XK_Y:        k = KEY_Y; break;
         default: break;
     }
+    return k;
+}
+
+static void send_keyaction(int k, int action) {
     if (!k) return;
 
     if (action == 2) k |= KEYUP;
@@ -55,6 +59,8 @@ int main(int argc, char *argv[]) {
         int new_height;
         char *cur_buf = 0;
         char *cur_temp_buf = 0;
+        char key_queue[10];
+        memset(key_queue, 0, 10);
 
         // X11 init
         Display *dpy = XOpenDisplay(NULL);
@@ -141,8 +147,16 @@ int main(int argc, char *argv[]) {
                 XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
                 XFlush(dpy);
 
+                for (int i = 0; i < 10; i++) {
+                    if (key_queue[i]) {
+                        send_keyaction(i, 2);
+                        key_queue[i] = 0;
+                    }
+                }
+
                 while (XPending(dpy)) {
                     XEvent ev;
+                    int kv;
                     XNextEvent(dpy, &ev);
                     switch (ev.type) {
                         case Expose:
@@ -152,11 +166,17 @@ int main(int argc, char *argv[]) {
                         case KeyPress: {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
                             if (ks == XK_q) { running = 0; }
-                            send_keyaction(ks, 1);
+                            kv = parse_key(ks);
+                            send_keyaction(kv, 1);
+                            key_queue[kv] = 1;
                         } break;
                         case KeyRelease: {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
-                            send_keyaction(ks, 2);
+                            kv = parse_key(ks);
+                            if (key_queue[kv]) {
+                                continue;
+                            }
+                            send_keyaction(kv, 2);
                         } break;
                         case ClientMessage:
                         default:

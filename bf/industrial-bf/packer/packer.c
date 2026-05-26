@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 char parse_digit(char digit) {
         char out;
@@ -22,25 +23,28 @@ int main(int argc, char *argv[]) {
         char digit;
         char last_char = ' ';
         char reading_number = 0;
-        unsigned int rep_count = 0;
+        size_t rep_count = 0;
+        size_t block;
 
         setvbuf(stdout, NULL, _IONBF, 0);
         while (fread(buf, 1, 1, stdin)) {
                 if (reading_number && buf[0] == '}') {
                         if (!rep_count) rep_count = 1;
                         rep_count--;
+                        block = rep_count;
+                        if (block > MAX_BLOCK) {
+                                block = MAX_BLOCK;
+                        }
+                        memset(pbuf, last_char, block);
                         while (rep_count) {
-                                unsigned int block = rep_count;
+                                block = rep_count;
                                 if (block > MAX_BLOCK) {
                                         block = MAX_BLOCK;
                                 }
                                 rep_count -= block;
-                                unsigned int pos = 0;
-                                while (pos < block) {
-                                        pbuf[pos++] = last_char;
-                                }
-                                pbuf[pos] = 0;
+                                pbuf[block] = 0;
                                 fputs(pbuf, stdout);
+                                pbuf[block] = last_char;
                         }
                         reading_number = 0;
                 }
