@@ -14,6 +14,10 @@ fake_bfk_doom: doom
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
 
+bfk_doom.elf: doom
+	$(MAKE) -C $^ $@
+	cp $^/$@ .
+
 ibf: bf/industrial-bf
 	$(MAKE) -C $^ $@
 	cp $^/$@ .

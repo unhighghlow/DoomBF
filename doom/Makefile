@@ -46,6 +46,20 @@ lnx_doom: lnx_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
 
 bfk_doom.o: doom_wad.h
 
+bfk_doom.elf: bfk_doom.c $(DOOM_SOURCES) $(CRT_SOURCES)
+	riscv32-none-elf-gcc \
+	    -O3 \
+	    -march=rv32i \
+	    -mabi=ilp32 \
+	    -ffreestanding \
+	    -nostdlib \
+	    -T bfk_link.ld \
+	    -std=c11 \
+	    -D_BF \
+	    bfk_doom.c $(DOOM_SOURCES) $(CRT_SOURCES) \
+	    -lgcc \
+	    -o bfk_doom.elf
+
 fake_bfk_doom: bfk_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o $@
 

@@ -22,8 +22,19 @@ unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
 void EnvPutChar(int c) {
+#ifdef _BF
+    char cc = c;
+
+    register long a0 __asm__("a0") = 1; // stdout
+    register const char *a1 __asm__("a1") = &cc;
+    register long a2 __asm__("a2") = 1;
+    register long a7 __asm__("a7") = 64; // write
+    __asm__ volatile ("ecall"
+        : "+r"(a0)
+        : "r"(a1), "r"(a2), "r"(a7)
+        : "memory");
+#else
     putc(c, stdout);
-#ifndef _BF
     if (c == '\n') {
         fflush(stdout);
     }
@@ -32,7 +43,19 @@ void EnvPutChar(int c) {
 
 char EnvGetCharBlock() {
     char buf[1];
+#ifdef _BF
+    register long a0 __asm__("a0") = 0; // stdin
+    register const char *a1 __asm__("a1") = buf;
+    register long a2 __asm__("a2") = 1;
+    register long a7 __asm__("a7") = 63; // read
+
+    __asm__ volatile("ecall"
+        : "+r"(a0)
+        : "r"(a1), "r"(a2), "r"(a7)
+        : "memory");
+#else
     read(STDIN_FILENO, buf, 1);
+#endif
     return buf[0];
 }
 
@@ -176,3 +199,9 @@ void process_keyevent(char event) {
         }
     }
 }
+
+#ifdef _BF
+void _start() {
+    main(0, NULL);
+}
+#endif
