@@ -2,10 +2,10 @@
 #  define _GNU_SOURCE
 #  include <sys/mman.h>
 #  include <time.h>
+#  include <stdio.h>
 #endif
 
 #include <stddef.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #include "crt/doom_env.h"
@@ -21,18 +21,25 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void EnvPutChar(int c) {
+void stdout_write(char *buf, size_t nbyte) {
 #ifdef _BF
-    char cc = c;
-
     register long a0 __asm__("a0") = 1; // stdout
-    register const char *a1 __asm__("a1") = &cc;
-    register long a2 __asm__("a2") = 1;
+    register const char *a1 __asm__("a1") = buf;
+    register long a2 __asm__("a2") = nbyte;
     register long a7 __asm__("a7") = 64; // write
     __asm__ volatile ("ecall"
         : "+r"(a0)
         : "r"(a1), "r"(a2), "r"(a7)
         : "memory");
+#else
+    write(STDOUT_FILENO, buf, nbyte);
+#endif
+}
+
+void EnvPutChar(int c) {
+#ifdef _BF
+    char cc = c;
+    stdout_write(&cc, 1);
 #else
     putc(c, stdout);
     if (c == '\n') {
@@ -150,23 +157,27 @@ void step_clock(int step_us) {
     g_BrainfuckDoomControlRegs.time_usec = cur_time_us;
 }
 
+#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 4)
 void output_image(char *pixels) {
+    static unsigned char buf[BUF_SIZE];
     int i;
 
-    EnvPutChar(0);
-    EnvPutChar(DOOM_WIDTH >> 8);
-    EnvPutChar(DOOM_WIDTH);
-    EnvPutChar(DOOM_HEIGHT >> 8);
-    EnvPutChar(DOOM_HEIGHT);
-    unsigned char a = 0x01;
+    char zero = 0;
+    stdout_write(&zero, 1);
+
+    buf[0] = DOOM_WIDTH >> 8;
+    buf[1] = DOOM_WIDTH & 0xff;
+    buf[2] = DOOM_HEIGHT >> 8;
+    buf[3] = DOOM_HEIGHT & 0xff;
+
+    size_t a = 4;
     for (i = 0; i < IMAGE_SIZE; i+=4) {
-        EnvPutChar(pixels[i]);
-        EnvPutChar(pixels[i+1]);
-        EnvPutChar(pixels[i+2]);
-        a++;
-        if (!a) a = 1;
+        buf[a++] = pixels[i];
+        buf[a++] = pixels[i+1];
+        buf[a++] = pixels[i+2];
         /* skip alpha */
     }
+    stdout_write(buf, BUF_SIZE);
 }
 
 void process_keyevent(char event) {
