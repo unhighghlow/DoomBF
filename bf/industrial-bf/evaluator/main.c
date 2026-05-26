@@ -18,7 +18,11 @@
 
 #include <errno.h>
 
+#include "config.h"
+
+#ifdef JIT
 #include <lightning.h>
+#endif
 
 typedef char* string;
 typedef char character;
@@ -38,9 +42,9 @@ uint8_t option_o = 0;
 #endif
 
 #include "optimizer.c"
+#ifdef JIT
 #include "jit.c"
-
-#include "config.h"
+#endif
 
 string read_file(string filename, uint64_t *program_length);
 void evaluate(uint8_t program[], CELL *tape);
@@ -112,8 +116,11 @@ if (option_d) {
 }
 #endif
 
-        //evaluate(program, tape);
+#ifdef JIT
         jit_run(program, tape);
+#else
+        evaluate(program, tape);
+#endif
 
         fclose(fd);
         free(tape);

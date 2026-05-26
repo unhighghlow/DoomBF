@@ -1,17 +1,14 @@
-ifeq ($(origin IBF_AVX2),undefined)
-	AVX2 = ""
-else
-	AVX2 = "-mavx2"
+EXTRA := 
+ifneq ($(origin IBF_AVX2),undefined)
+	EXTRA += -mavx2
 endif
 
-ifeq ($(origin IBF_JIT),undefined)
-	LIGHTNING = ""
-else
-	LIGHTNING = "-llightning"
+ifneq ($(origin IBF_JIT),undefined)
+	EXTRA += -llightning
 endif
 
 ibf: evaluator/
-	${CC} evaluator/main.c -g -O3 ${AVX2} ${LIGHTNING} -o ibf ${CCFLAGS}
+	${CC} evaluator/main.c -g ${EXTRA} -O3 -o ibf ${CCFLAGS}
 
 bld: loader/
 	${CC} loader/loader.c -g -O3 -o bld ${CCFLAGS}
