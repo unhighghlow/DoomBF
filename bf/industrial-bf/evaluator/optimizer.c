@@ -13,6 +13,7 @@ struct loop_data {
 
 struct revertable_stream {
         FILE *fd;
+        int fildes;
         struct vector *pushback;
         size_t pushback_pos;
 };
@@ -40,18 +41,18 @@ static inline size_t read_revertable_direct(character *ptr, struct revertable_st
         vector_extend(stream->pushback, new_capacity);
         uint8_t *buf = &stream->pushback->ptr[stream->pushback->length];
 
-        size_t read = 0;
+        size_t readb = 0;
         while (1) {
-                read = fread(buf, 1, READ_BLOCK_SIZE, stream->fd);
-                if (read) break;
+                readb = read(stream->fildes, buf, READ_BLOCK_SIZE);
+                if (readb) break;
 
-                if (errno == EAGAIN || !feof(stream->fd)) {
+                if (errno == EAGAIN) {
                         continue;
                 }
                 return 0;
         }
-        if (read == 0) return 0;
-        stream->pushback->length += read;
+        if (readb == 0) return 0;
+        stream->pushback->length += readb;
         *ptr = buf[0];
         return 1;
 }
@@ -81,7 +82,7 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
 
 #define READ_CHAR(ptr, stream) { \
         if (read_revertable(ptr, stream) != 1) { \
-                if (feof(stream->fd)) { \
+                if (feof(stream->fd) || !errno) { \
                         *ptr = EOF; \
                 } else { \
                         perror("reading file"); \
@@ -100,7 +101,7 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
 
 #define PEEK_CHAR(ptr, stream) { \
         if (peek_revertable(ptr, stream) != 1) { \
-                if (feof(stream->fd)) { \
+                if (feof(stream->fd) || !errno) { \
                         *ptr = EOF; \
                 } else { \
                         perror("peeking file"); \
@@ -109,7 +110,7 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
         } \
 }
 
-uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character inst;
         READ_CHAR_NOEOF(&inst, program_in);
         uint8_t allow_wide = inst == '>' || inst == '<';
@@ -160,14 +161,14 @@ uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *progr
         return 0;
 }
 
-uint8_t proc_unrol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_unrol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
         vector_push(program_out, chr);
         return 0;
 }
 
-uint8_t proc_open_loop(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_open_loop(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
 
@@ -180,7 +181,7 @@ uint8_t proc_open_loop(struct revertable_stream *program_in, struct vector *prog
         return 0;
 }
 
-uint8_t proc_close_loop(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_close_loop(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
 
@@ -205,7 +206,7 @@ uint8_t proc_close_loop(struct revertable_stream *program_in, struct vector *pro
         return 0;
 }
 
-uint8_t proc_assert(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_assert(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         printf("not implemented: proc_assert\n");
         return 1;
         /*
@@ -227,7 +228,7 @@ uint8_t proc_assert(struct revertable_stream *program_in, struct vector *program
         */
 }
 
-uint8_t proc_zero(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_zero(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
 
@@ -244,15 +245,22 @@ uint8_t proc_zero(struct revertable_stream *program_in, struct vector *program_o
         return 0;
 }
 
-uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
 
+        uint8_t offset_init = 0;
         struct vector offset_keys;   // short (signed)
         struct vector offset_values; // char (signed)
-
-        vector_init(&offset_keys, 0);
-        vector_init(&offset_values, 0);
+        
+        if (!offset_init) {
+                vector_init(&offset_keys, 0);
+                vector_init(&offset_values, 0);
+                offset_init = 1;
+        } else {
+                offset_keys.length = 0;
+                offset_values.length = 0;
+        }
 
         vector_push_ex(&offset_keys, int16_t, 0);
         vector_push(&offset_values, 0);
@@ -321,8 +329,6 @@ uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_o
                 vector_push(program_out, offset_values.ptr[i]);
         } 
         vector_push(program_out, '0');
-        vector_drop(&offset_keys);
-        vector_drop(&offset_values);
 
         return 0;
 }
@@ -330,7 +336,7 @@ uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_o
 /* return values: -1 -- EOF
  *                 0 -- success
  *             other -- error */
-uint8_t process_instruction(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
+static inline uint8_t process_instruction(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
 
 /* fn return values: -1 -- no match occured
  *                    0 -- success
@@ -351,7 +357,7 @@ uint8_t process_instruction(struct revertable_stream *program_in, struct vector 
 
         character chr;
         uint8_t rout = peek_revertable(&chr, program_in);
-        if (rout == 0 && feof(program_in->fd)) {
+        if (rout == 0 && (feof(program_in->fd) || !errno)) {
                 /* EOF */
                 return -1;
         }
@@ -415,6 +421,7 @@ uint8_t *optimize(FILE *program_in) {
         vector_init(&pushback_vec, 0);
         struct revertable_stream stream;
         stream.fd = program_in;
+        stream.fildes = fileno(program_in);
         stream.pushback = &pushback_vec;
         stream.pushback_pos = 0;
 

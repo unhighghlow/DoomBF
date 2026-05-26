@@ -7,7 +7,7 @@ uint64_t round_up_to_power_of_two(uint64_t n) {
 }
 
 void *safe_malloc(uint64_t size) {
-        void *p = malloc(size);
+        void *p = calloc(1, size);
         if (!p) {
                 printf("memory allocation failed\n");
                 exit(1);

@@ -18,9 +18,6 @@
 
 #include <errno.h>
 
-#pragma GCC poison long
-#pragma GCC poison int
-
 typedef char* string;
 typedef char character;
 
@@ -98,7 +95,6 @@ if (option_d) {
         uint8_t *program = optimize(fd);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
-        memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
         load_page(tape, PAGE_COUNT-1);
         load_page(tape, 0);
