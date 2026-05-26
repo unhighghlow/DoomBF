@@ -32,8 +32,15 @@ int main(int argc, char *argv[]) {
         setvbuf(stdout, NULL, _IONBF, 0);
         while (1) {
                 if (rbuf_pos >= rbuf_size) {
-                        rbuf_size = fread(rbuf, 1, MAX_BLOCK, stdin);
+                        rbuf_size = 0;
                         rbuf_pos = 0;
+                        while (1) {
+                                rbuf_size = fread(rbuf, 1, MAX_BLOCK, stdin);
+                                if (rbuf_size) break;
+                                if (feof(stdin)) return 0;
+                                perror("error reading file");
+                                return 1;
+                        }
                 }
                 buf[0] = rbuf[rbuf_pos++];
                 if (reading_number && buf[0] == '}') {
