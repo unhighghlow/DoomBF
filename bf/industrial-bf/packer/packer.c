@@ -19,7 +19,10 @@ char parse_digit(char digit) {
 #define MAX_BLOCK 0x10000
 int main(int argc, char *argv[]) {
         char pbuf[MAX_BLOCK+1];
-        char buf[1];
+        char rbuf[MAX_BLOCK];
+        register size_t rbuf_size = 0;
+        register size_t rbuf_pos = 0;
+        char buf[2];
         char digit;
         char last_char = ' ';
         char reading_number = 0;
@@ -27,7 +30,12 @@ int main(int argc, char *argv[]) {
         size_t block;
 
         setvbuf(stdout, NULL, _IONBF, 0);
-        while (fread(buf, 1, 1, stdin)) {
+        while (1) {
+                if (rbuf_pos >= rbuf_size) {
+                        rbuf_size = fread(rbuf, 1, MAX_BLOCK, stdin);
+                        rbuf_pos = 0;
+                }
+                buf[0] = rbuf[rbuf_pos++];
                 if (reading_number && buf[0] == '}') {
                         if (!rep_count) rep_count = 1;
                         rep_count--;
@@ -63,7 +71,7 @@ int main(int argc, char *argv[]) {
                 else
                 {
                         last_char = buf[0];
-                        printf("%c", buf[0]);
+                        puts(buf);
                 }
         }
 }
