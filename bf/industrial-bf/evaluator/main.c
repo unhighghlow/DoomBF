@@ -224,10 +224,7 @@ if (option_d && !option_o) {
         NEXT
 
 input:
-        character buf[2];
-        buf[0] = tape[dp%HOT_TAPE];
-        fgets(buf, 2, stdin);
-        tape[dp%HOT_TAPE] = buf[0];
+        read(STDIN_FILENO, &tape[dp%HOT_TAPE], 1);
         pc+=1;
         NEXT
 

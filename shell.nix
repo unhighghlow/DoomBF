@@ -17,6 +17,7 @@ pkgs.mkShell {
     pkgs.gnumake
     pkgs.libX11.dev
     pkgs.libX11
+    pkgs.lightning
     (pkgs.python3.withPackages (p: with p; [
       pyelftools
       capstone

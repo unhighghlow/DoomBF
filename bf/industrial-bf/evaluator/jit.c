@@ -45,9 +45,17 @@ void jit_run(uint8_t program[], CELL tape[]) {
                           jit_addi(JIT_V1, JIT_V1, CMD_rol_arg(inst));
                           pc+=2;
                           break;
+                  case 'r':
+                          jit_addi(JIT_V1, JIT_V1, CMD_wide_arg(inst));
+                          pc+=8;
+                          break;
                   case '<':
                           jit_subi(JIT_V1, JIT_V1, CMD_rol_arg(inst));
                           pc+=2;
+                          break;
+                  case 'l':
+                          jit_subi(JIT_V1, JIT_V1, CMD_wide_arg(inst));
+                          pc+=8;
                           break;
                   case '[':
                           if (sp == 0xfff) {
@@ -95,6 +103,14 @@ void jit_run(uint8_t program[], CELL tape[]) {
                           jit_ellipsis();
                           jit_pushargr(JIT_R0);
                           jit_finishi(printf);
+                          pc+=1;
+                          break;
+                  case ',':
+                          jit_prepare();
+                          jit_pushargi(STDIN_FILENO);
+                          jit_pushargr(JIT_V1);
+                          jit_pushargi(1);
+                          jit_finishi(read);
                           pc+=1;
                           break;
                   default:
