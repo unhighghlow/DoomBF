@@ -114,6 +114,10 @@ if (option_d) {
 #endif
 
         evaluate(program, tape);
+
+        fclose(fd);
+        free(tape);
+        free(program);
 }
 
 const void* jumptable[0x100];

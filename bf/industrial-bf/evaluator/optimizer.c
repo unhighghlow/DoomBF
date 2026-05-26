@@ -33,10 +33,13 @@ struct revertable_stream {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-#define READ_BLOCK_SIZE 0x10000
+#define READ_BLOCK_SIZE ((uint64_t)0x100000)
 
 static inline size_t read_revertable_direct(character *ptr, struct revertable_stream *stream) {
-        static character buf[READ_BLOCK_SIZE];
+        size_t new_capacity = stream->pushback->length+READ_BLOCK_SIZE;
+        vector_extend(stream->pushback, new_capacity);
+        uint8_t *buf = &stream->pushback->ptr[stream->pushback->length];
+
         size_t read = 0;
         while (1) {
                 read = fread(buf, 1, READ_BLOCK_SIZE, stream->fd);
@@ -48,7 +51,7 @@ static inline size_t read_revertable_direct(character *ptr, struct revertable_st
                 return 0;
         }
         if (read == 0) return 0;
-        vector_append(stream->pushback, buf, read);
+        stream->pushback->length += read;
         *ptr = buf[0];
         return 1;
 }
@@ -336,8 +339,10 @@ uint8_t process_instruction(struct revertable_stream *program_in, struct vector 
         size_t pos = program_in->pushback_pos; \
         int8_t out = fn(program_in, program_out, ld); \
         if (out != -1) { \
-                vector_truncate_start(program_in->pushback, program_in->pushback_pos); \
-                program_in->pushback_pos = 0; \
+                if (program_in->pushback_pos > 0xf0000) { \
+                        vector_truncate_start(program_in->pushback, program_in->pushback_pos); \
+                        program_in->pushback_pos = 0; \
+                } \
                 return out; \
         } else { \
                 program_in->pushback_pos = pos; \
@@ -443,5 +448,6 @@ if (option_d) {
         for (int32_t i = 0; i < 8; i++) {
                 vector_push(&program_out, 0);
         }
+        vector_drop(&pushback_vec);
         return vector_unwrap(&program_out);
 }
