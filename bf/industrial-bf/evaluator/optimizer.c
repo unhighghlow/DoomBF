@@ -34,16 +34,16 @@ struct revertable_stream {
         ld->sp--; \
         i = ld->stack[ld->sp];
 
-#define READ_BLOCK_SIZE ((uint64_t)0x100000)
+#define READ_BLOCK_SIZE2 ((uint64_t)READ_BLOCK_SIZE)
 
 static inline size_t read_revertable_direct(character *ptr, struct revertable_stream *stream) {
-        size_t new_capacity = stream->pushback->length+READ_BLOCK_SIZE;
+        size_t new_capacity = stream->pushback->length+READ_BLOCK_SIZE2;
         vector_extend(stream->pushback, new_capacity);
         uint8_t *buf = &stream->pushback->ptr[stream->pushback->length];
 
         size_t readb = 0;
         while (1) {
-                readb = read(stream->fildes, buf, READ_BLOCK_SIZE);
+                readb = read(stream->fildes, buf, READ_BLOCK_SIZE2);
                 if (readb) break;
 
                 if (errno == EAGAIN) {
@@ -356,7 +356,7 @@ static inline uint8_t process_instruction(struct revertable_stream *program_in, 
         size_t pos = program_in->pushback_pos; \
         int8_t out = fn(program_in, program_out, ld); \
         if (out != -1) { \
-                if (program_in->pushback_pos > 0xf0000) { \
+                if (program_in->pushback_pos > ROLLBACK_CLEAR_MIN_SIZE) { \
                         vector_truncate_start(program_in->pushback, program_in->pushback_pos); \
                         program_in->pushback_pos = 0; \
                 } \

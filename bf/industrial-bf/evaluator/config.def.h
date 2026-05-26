@@ -15,3 +15,5 @@
 
 /* Advanced optimization options */
 // #define FAST_ROL
+#define READ_BLOCK_SIZE 0x20000
+#define ROLLBACK_CLEAR_MIN_SIZE 0xf0000
