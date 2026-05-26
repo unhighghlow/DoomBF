@@ -12,3 +12,6 @@
 // #define   DEBUGGER_TAPE_VIEW     8
 #define ASSERTS
 #define CELL_FORMAT_STRING "%2x"
+
+/* Advanced optimization options */
+// #define FAST_ROL

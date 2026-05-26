@@ -110,11 +110,22 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
         } \
 }
 
+#ifdef FAST_ROL
+#include "fast_proc_rol.c"
+#endif
+
 static inline uint8_t proc_rol_inst(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character inst;
         READ_CHAR_NOEOF(&inst, program_in);
         uint8_t allow_wide = inst == '>' || inst == '<';
         uint64_t wide_limit = 1<<PAGE_SIZE_POWER;
+
+#ifdef FAST_ROL
+        if (allow_wide) {
+                program_in->pushback_pos--;
+                return fast_proc_rol_inst(program_in, program_out, ld);
+        }
+#endif
 
         character cur;
         uint32_t count = 1;
