@@ -41,6 +41,19 @@ void EnvPutChar(int c) {
 #endif
 }
 
+void EnvPutStr(char *s) {
+#ifdef _BF
+    register const char *a1 __asm__("a1") = s;
+    register long a7 __asm__("a7") = 86; // fast_write
+    __asm__ volatile ("ecall"
+        :
+        : "r"(a1), "r"(a7)
+        : "memory");
+#else
+    printf("%s", s+1);
+#endif
+}
+
 char EnvGetCharBlock() {
     char buf[1];
 #ifdef _BF
@@ -122,6 +135,7 @@ int main(int argc, char *argv[]) {
 
     char ev;
     while (1) {
+        EnvPutStr("\0Getting events\n");
         while (1) {
             ev = EnvGetCharBlock();
             if (!ev) break;
@@ -130,6 +144,7 @@ int main(int argc, char *argv[]) {
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
+        EnvPutStr("\0Running game\n");
         CrtDoomIteration();
         output_image(pixels);
 #ifndef _BF
@@ -150,23 +165,33 @@ void step_clock(int step_us) {
     g_BrainfuckDoomControlRegs.time_usec = cur_time_us;
 }
 
+#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 6)
+
 void output_image(char *pixels) {
+    EnvPutStr("\0Start image output\n");
+
+    static unsigned char buf[BUF_SIZE];
     int i;
 
-    EnvPutChar(0);
-    EnvPutChar(DOOM_WIDTH >> 8);
-    EnvPutChar(DOOM_WIDTH);
-    EnvPutChar(DOOM_HEIGHT >> 8);
-    EnvPutChar(DOOM_HEIGHT);
-    unsigned char a = 0x01;
+    EnvPutChar('\0');
+
+    buf[0] = '\0';
+    buf[1] = DOOM_WIDTH >> 8;
+    buf[2] = DOOM_WIDTH & 0xff;
+    buf[3] = DOOM_HEIGHT >> 8;
+    buf[4] = DOOM_HEIGHT & 0xff;
+
+    size_t a = 5;
     for (i = 0; i < IMAGE_SIZE; i+=4) {
-        EnvPutChar(pixels[i]);
-        EnvPutChar(pixels[i+1]);
-        EnvPutChar(pixels[i+2]);
-        a++;
-        if (!a) a = 1;
+        buf[a++] = pixels[i] ? pixels[i] : 1;
+        buf[a++] = pixels[i+1] ? pixels[i+1] : 1;
+        buf[a++] = pixels[i+2] ? pixels[i+2] : 1;
         /* skip alpha */
     }
+    buf[a] = '\0';
+    EnvPutStr(buf);
+
+    EnvPutStr("\0\nEnd image output\n");
 }
 
 void process_keyevent(char event) {
