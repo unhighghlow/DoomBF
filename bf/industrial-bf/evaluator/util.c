@@ -108,7 +108,7 @@ uint64_t _hton_custom(uint64_t val, uint8_t len) {
         abort();
 }
 
-uint8_t is_comment(character inst) {
+static inline uint8_t is_comment(character inst) {
         return !(
                 inst == '+'
              || inst == '-'

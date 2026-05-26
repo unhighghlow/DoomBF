@@ -1,6 +1,6 @@
 #include "config.h"
 
-#define PAGE_SIZE (1<<PAGE_SIZE_POWER)
+#define PAGE_SIZE ((uint64_t)1<<PAGE_SIZE_POWER)
 #define HOT_TAPE (PAGE_SIZE * 4)
 #define PAGE_COUNT ((~((uint64_t)0)>>PAGE_SIZE_POWER)+1)
 
@@ -11,7 +11,7 @@ uint64_t get_page_uid(uint64_t dp) {
         return dp / PAGE_SIZE;
 }
 
-inline uint8_t get_page_n(uint64_t dp) {
+static inline uint8_t get_page_n(uint64_t dp) {
         return dp / PAGE_SIZE % 4;
 }
 
