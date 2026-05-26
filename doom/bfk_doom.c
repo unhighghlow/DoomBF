@@ -2,10 +2,10 @@
 #  define _GNU_SOURCE
 #  include <sys/mman.h>
 #  include <time.h>
-#  include <stdio.h>
 #endif
 
 #include <stddef.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "crt/doom_env.h"
@@ -21,30 +21,36 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void stdout_write(char *buf, size_t nbyte) {
+void EnvPutChar(int c) {
 #ifdef _BF
+    char cc = c;
+
     register long a0 __asm__("a0") = 1; // stdout
-    register const char *a1 __asm__("a1") = buf;
-    register long a2 __asm__("a2") = nbyte;
+    register const char *a1 __asm__("a1") = &cc;
+    register long a2 __asm__("a2") = 1;
     register long a7 __asm__("a7") = 64; // write
     __asm__ volatile ("ecall"
         : "+r"(a0)
         : "r"(a1), "r"(a2), "r"(a7)
         : "memory");
 #else
-    write(STDOUT_FILENO, buf, nbyte);
-#endif
-}
-
-void EnvPutChar(int c) {
-#ifdef _BF
-    char cc = c;
-    stdout_write(&cc, 1);
-#else
     putc(c, stdout);
     if (c == '\n') {
         fflush(stdout);
     }
+#endif
+}
+
+void EnvPutStr(char *s) {
+#ifdef _BF
+    register const char *a1 __asm__("a1") = s;
+    register long a7 __asm__("a7") = 86; // fast_write
+    __asm__ volatile ("ecall"
+        :
+        : "r"(a1), "r"(a7)
+        : "memory");
+#else
+    printf("%s", s+1);
 #endif
 }
 
@@ -129,6 +135,7 @@ int main(int argc, char *argv[]) {
 
     char ev;
     while (1) {
+        EnvPutStr("\0Getting events\n");
         while (1) {
             ev = EnvGetCharBlock();
             if (!ev) break;
@@ -137,6 +144,7 @@ int main(int argc, char *argv[]) {
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
+        EnvPutStr("\0Running game\n");
         CrtDoomIteration();
         output_image(pixels);
 #ifndef _BF
@@ -157,27 +165,33 @@ void step_clock(int step_us) {
     g_BrainfuckDoomControlRegs.time_usec = cur_time_us;
 }
 
-#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 4)
+#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 6)
+
 void output_image(char *pixels) {
+    EnvPutStr("\0Start image output\n");
+
     static unsigned char buf[BUF_SIZE];
     int i;
 
-    char zero = 0;
-    stdout_write(&zero, 1);
+    EnvPutChar('\0');
 
-    buf[0] = DOOM_WIDTH >> 8;
-    buf[1] = DOOM_WIDTH & 0xff;
-    buf[2] = DOOM_HEIGHT >> 8;
-    buf[3] = DOOM_HEIGHT & 0xff;
+    buf[0] = '\0';
+    buf[1] = DOOM_WIDTH >> 8;
+    buf[2] = DOOM_WIDTH & 0xff;
+    buf[3] = DOOM_HEIGHT >> 8;
+    buf[4] = DOOM_HEIGHT & 0xff;
 
-    size_t a = 4;
+    size_t a = 5;
     for (i = 0; i < IMAGE_SIZE; i+=4) {
-        buf[a++] = pixels[i];
-        buf[a++] = pixels[i+1];
-        buf[a++] = pixels[i+2];
+        buf[a++] = pixels[i] ? pixels[i] : 1;
+        buf[a++] = pixels[i+1] ? pixels[i+1] : 1;
+        buf[a++] = pixels[i+2] ? pixels[i+2] : 1;
         /* skip alpha */
     }
-    stdout_write(buf, BUF_SIZE);
+    buf[a] = '\0';
+    EnvPutStr(buf);
+
+    EnvPutStr("\0\nEnd image output\n");
 }
 
 void process_keyevent(char event) {
