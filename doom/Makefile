@@ -57,8 +57,6 @@ bfk_doom.elf: bfk_doom.c $(DOOM_SOURCES) $(CRT_SOURCES)
 	    -std=c11 \
 	    -D_BF \
 	    bfk_doom.c $(DOOM_SOURCES) $(CRT_SOURCES) \
-	    -Wno-pointer-to-int-cast \
-	    -Wno-int-to-pointer-cast \
 	    -lgcc \
 	    -o bfk_doom.elf
 
