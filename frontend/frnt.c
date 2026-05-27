@@ -78,11 +78,16 @@ int main(int argc, char *argv[]) {
         XImage *img;
         GC gc;
 
+        setvbuf(stdout, NULL, _IONBF, 0);
+        setvbuf(stdin, NULL, _IONBF, 0);
+
         int running = 1;
         while (running) {
                 read_until_image();
+                fprintf(stderr, "[frnt] Image begin\n");
                 new_width = read_short();
                 new_height = read_short();
+                fprintf(stderr, "[frnt] %dx%d\n", new_width, new_height);
                 int img_size = new_width * new_height * BYTES_PER_PIXEL;
                 int read_img_size = new_width * new_height * 3;
 
@@ -133,7 +138,9 @@ int main(int argc, char *argv[]) {
                         exit(1);
                 }
 
+                fprintf(stderr, "[frnt] Reading %d bytes\n", read_img_size);
                 full_read(cur_temp_buf, read_img_size);
+                fprintf(stderr, "[frnt] Read done\n");
 
                 int j = 0;
                 for (int i = 0; i < cur_width * cur_height * BYTES_PER_PIXEL; i+=BYTES_PER_PIXEL) {

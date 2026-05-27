@@ -92,15 +92,13 @@ char EnvGetCharBlock() {
 static int  g_DoomWinWidth  = DOOM_WIDTH;
 static int  g_DoomWinHeight = DOOM_HEIGHT;
 
-void output_image(char*);
+void output_image(unsigned char*);
 void step_clock(int);
 void process_keyevent(char);
 
 int main(int argc, char *argv[]) {
-    char pixels[IMAGE_SIZE];
-    for (int i = 0; i < IMAGE_SIZE; i++) {
-        pixels[i] = 0;
-    }
+    char pixels[IMAGE_SIZE+4];
+    EnvPutStr("\0[OP] Starting\n");
 
     g_DoomWadAddress = data_doom_wad;
     g_DoomWadSize = data_doom_wad_len;
@@ -135,16 +133,20 @@ int main(int argc, char *argv[]) {
 
     char ev;
     while (1) {
-        EnvPutStr("\0Getting events\n");
+        EnvPutStr("\0[OP] Getting events\n");
         while (1) {
             ev = EnvGetCharBlock();
             if (!ev) break;
             process_keyevent(ev);
+            EnvPutStr("\0[OP] Event: ");
+            EnvPutChar('0'+(ev>>8));
+            EnvPutChar('0'+(ev&0xf));
+            EnvPutChar('\n');
         }
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
-        EnvPutStr("\0Running game\n");
+        EnvPutStr("\0[OP] Running game\n");
         CrtDoomIteration();
         output_image(pixels);
 #ifndef _BF
@@ -167,13 +169,33 @@ void step_clock(int step_us) {
 
 #define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 6)
 
-void output_image(char *pixels) {
-    EnvPutStr("\0Start image output\n");
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 60
+
+void print_progress(int val) {
+    int lpad = (int) (val * PBWIDTH / 100);
+    int rpad = PBWIDTH - lpad;
+    static char buf[PBWIDTH+4];
+    buf[0] = '\0';
+    buf[1] = '\r';
+    buf[2] = '[';
+    buf[PBWIDTH+3] = ']';
+    for (int i = 3; i < PBWIDTH+3; i++) {
+        if (i < val+3)
+            buf[i] = '|';
+        else
+            buf[i] = ' ';
+    }
+    EnvPutStr(buf);
+}
+
+void output_image(unsigned char *pixels) {
+    EnvPutStr("\0[OP] Start image output\n");
 
     static unsigned char buf[BUF_SIZE];
     int i;
-
-    EnvPutChar('\0');
+    int last_print = -100;
+    int perc = 0;
 
     buf[0] = '\0';
     buf[1] = DOOM_WIDTH >> 8;
@@ -186,12 +208,21 @@ void output_image(char *pixels) {
         buf[a++] = pixels[i] ? pixels[i] : 1;
         buf[a++] = pixels[i+1] ? pixels[i+1] : 1;
         buf[a++] = pixels[i+2] ? pixels[i+2] : 1;
+        perc = (i * 100) / IMAGE_SIZE;
+        if (perc - last_print > 5) {
+                last_print = perc;
+                print_progress(perc);
+        }
         /* skip alpha */
     }
+    print_progress(100);
     buf[a] = '\0';
+
+    EnvPutChar('\n');
+    EnvPutChar('\0');
     EnvPutStr(buf);
 
-    EnvPutStr("\0\nEnd image output\n");
+    EnvPutStr("\0\n[OP] End image output\n");
 }
 
 void process_keyevent(char event) {
