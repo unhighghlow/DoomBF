@@ -110,6 +110,24 @@ static inline size_t peek_revertable(character *ptr, struct revertable_stream *s
         } \
 }
 
+uint64_t stream_read_number(struct revertable_stream *program_in) {
+        uint64_t val = 0;
+        int8_t digit;
+        character chr;
+        while (1) {
+                PEEK_CHAR(&chr, program_in);
+                digit = parse_digit(chr);
+                if (digit == -1)
+                        break;
+                val <<= 4;
+                val += digit;
+                program_in->pushback_pos++;
+        }
+        return val;
+}
+
+#include "compression.c"
+
 #ifdef FAST_ROL
 #include "fast_proc_rol.c"
 #endif
@@ -285,14 +303,17 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                 int8_t change;
                 int8_t key_found;
                 uint64_t key_ind;
+#define CR() (option_c ? (comp_read(program_in) + 1) : 1)
                 switch (chr) {
-                        case '<': offset--; break;
-                        case '>': offset++; break;
+                        case '<':
+                                offset -= CR();
+                        case '>':
+                                offset += CR();
                         case '+':
-                                change = 1;
+                                change = CR();
                                 goto write_change;
                         case '-':
-                                change = -1;
+                                change = -CR();
                                 goto write_change;
                         write_change:
                                 if (offset >= INT16_MAX) return -1;
@@ -352,7 +373,7 @@ static inline uint8_t process_instruction(struct revertable_stream *program_in, 
 /* fn return values: -1 -- no match occured
  *                    0 -- success
  *                other -- error */
-#define CALL_PROC(fn) { \
+#define CALL_PROC(fn) do { \
         size_t pos = program_in->pushback_pos; \
         int8_t out = fn(program_in, program_out, ld); \
         if (out != -1) { \
@@ -364,7 +385,7 @@ static inline uint8_t process_instruction(struct revertable_stream *program_in, 
         } else { \
                 program_in->pushback_pos = pos; \
         } \
-}
+} while(0)
 
         character chr;
         uint8_t rout = peek_revertable(&chr, program_in);
@@ -386,7 +407,10 @@ if (option_d)
 #endif
         switch (chr) {
                 case '+': case '-': case '>': case '<':
+                        if (!option_c)
                         CALL_PROC(proc_rol_inst);
+                        else
+                        CALL_PROC(proc_rol_inst_comp);
 
                 case '.': case ',':
                         CALL_PROC(proc_unrol_inst);
@@ -411,6 +435,10 @@ if (option_d)
 #endif
 ignore:
                 default:
+                        if (option_c && chr == '{') {
+                                printf("unexpected {\n");
+                                return 1;
+                        }
                         // Comment
                         read_revertable(&chr, program_in);
                         return 0;

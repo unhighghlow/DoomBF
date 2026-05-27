@@ -30,6 +30,7 @@ typedef char character;
 uint8_t option_d = 0;
 uint8_t option_a = 0;
 uint8_t option_o = 0;
+uint8_t option_c = 0;
 
 #include "util.c"
 #include "vector.c"
@@ -50,7 +51,7 @@ string read_file(string filename, uint64_t *program_length);
 void evaluate(uint8_t program[], CELL *tape);
 
 void usage(string exec) {
-        fprintf(stderr, "usage: %s [-dao] [--] program.b\n",
+        fprintf(stderr, "usage: %s [-daoc] [--] program.b\n",
                 exec);
         exit(1);
 }
@@ -60,7 +61,7 @@ int32_t main(int32_t argc, string argv[]) {
         string addrmap_filename;
         unsigned char opt;
 
-        while ((opt = getopt(argc, argv, "dao")) != 0xff) {
+        while ((opt = getopt(argc, argv, "daoc")) != 0xff) {
                 switch (opt) {
                     case 'd':
                     case 'o':
@@ -79,6 +80,9 @@ int32_t main(int32_t argc, string argv[]) {
                         exit(1);
 #endif
                         option_a = 1;
+                        break;
+                    case 'c':
+                        option_c = 1;
                         break;
                     default: /* '?' */
                         usage(argv[0]);
