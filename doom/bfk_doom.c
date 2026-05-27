@@ -21,24 +21,39 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void EnvPutChar(int c) {
-#ifdef _BF
-    char cc = c;
-
-    register long a0 __asm__("a0") = 1; // stdout
-    register const char *a1 __asm__("a1") = &cc;
-    register long a2 __asm__("a2") = 1;
-    register long a7 __asm__("a7") = 64; // write
-    __asm__ volatile ("ecall"
-        : "+r"(a0)
-        : "r"(a1), "r"(a2), "r"(a7)
-        : "memory");
-#else
-    putc(c, stdout);
-    if (c == '\n') {
+void EnvWrite(char *s, uint16_t length) {
+    #ifdef _BF
+        register long a0 __asm__("a0") = 1; // stdout
+        register const char *a1 __asm__("a1") = s;
+        register long a2 __asm__("a2") = length;
+        register long a7 __asm__("a7") = 64; // write
+        __asm__ volatile ("ecall"
+            : "+r"(a0)
+            : "r"(a1), "r"(a2), "r"(a7)
+            : "memory");
+    #else
+        for (int i = 0; i < length; i++) {
+            putc(s[i], stdout);
+        }
         fflush(stdout);
-    }
-#endif
+    #endif
+}
+
+void EnvPutChar(int c) {
+    EnvWrite((char *)&c, 1);
+}
+
+void EnvPutStr(char *s) {
+    #ifdef _BF
+        register const char *a1 __asm__("a1") = s;
+        register long a7 __asm__("a7") = 86; // write_fast
+        __asm__ volatile ("ecall"
+            :
+            : "r"(a1), "r"(a7)
+            : "memory");
+    #else
+        printf("%s", s+1);
+    #endif
 }
 
 char EnvGetCharBlock() {
@@ -163,15 +178,13 @@ void output_image(unsigned char *pixels) {
     EnvPutChar(DOOM_HEIGHT >> 8);
     EnvPutChar(DOOM_HEIGHT);
     for (int i = 0; i < IMAGE_SIZE; i+=4) {
-        EnvPutChar(pixels[i]);
-        EnvPutChar(pixels[i+1]);
-        EnvPutChar(pixels[i+2]);
+        EnvWrite(pixels + i, 3);
         /* skip alpha */
     }
 
     EnvPutChar('\n');
 
-    EnvPutStr("\0\n[OP] End image output\n");
+    EnvPutStr("\0[OP] End image output\n\n");
 }
 
 void process_keyevent(char event) {
