@@ -86,11 +86,11 @@ void jit_run(uint8_t program[], CELL tape[]) {
                           break;
                   case '^':
                           jit_ldr_uc(JIT_R0, JIT_V1);
-                          jit_ldxi_c(JIT_R1, JIT_V1, CMD_copy_offset(inst));
+                          jit_ldxi_l(JIT_R1, JIT_V1, CMD_copy_offset(inst));
                           jit_muli(JIT_R0, JIT_R0, CMD_copy_val(inst));
                           jit_addr(JIT_R0, JIT_R0, JIT_R1);
                           jit_stxi_c(CMD_copy_offset(inst), JIT_V1, JIT_R0);
-                          pc+=4;
+                          pc+=8;
                           break;
                   case '0':
                           jit_str_c(JIT_V1, JIT_V2);
