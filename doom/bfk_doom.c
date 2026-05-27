@@ -41,19 +41,6 @@ void EnvPutChar(int c) {
 #endif
 }
 
-void EnvPutStr(char *s) {
-#ifdef _BF
-    register const char *a1 __asm__("a1") = s;
-    register long a7 __asm__("a7") = 86; // fast_write
-    __asm__ volatile ("ecall"
-        :
-        : "r"(a1), "r"(a7)
-        : "memory");
-#else
-    printf("%s", s+1);
-#endif
-}
-
 char EnvGetCharBlock() {
     char buf[1];
 #ifdef _BF
@@ -167,60 +154,22 @@ void step_clock(int step_us) {
     g_BrainfuckDoomControlRegs.time_usec = cur_time_us;
 }
 
-#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 6)
-
-#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
-#define PBWIDTH 60
-
-void print_progress(int val) {
-    int lpad = (int) (val * PBWIDTH / 100);
-    int rpad = PBWIDTH - lpad;
-    static char buf[PBWIDTH+4];
-    buf[0] = '\0';
-    buf[1] = '\r';
-    buf[2] = '[';
-    buf[PBWIDTH+3] = ']';
-    for (int i = 3; i < PBWIDTH+3; i++) {
-        if (i < val+3)
-            buf[i] = '|';
-        else
-            buf[i] = ' ';
-    }
-    EnvPutStr(buf);
-}
-
 void output_image(unsigned char *pixels) {
     EnvPutStr("\0[OP] Start image output\n");
 
-    static unsigned char buf[BUF_SIZE];
-    int i;
-    int last_print = -100;
-    int perc = 0;
-
-    buf[0] = '\0';
-    buf[1] = DOOM_WIDTH >> 8;
-    buf[2] = DOOM_WIDTH & 0xff;
-    buf[3] = DOOM_HEIGHT >> 8;
-    buf[4] = DOOM_HEIGHT & 0xff;
-
-    size_t a = 5;
-    for (i = 0; i < IMAGE_SIZE; i+=4) {
-        buf[a++] = pixels[i] ? pixels[i] : 1;
-        buf[a++] = pixels[i+1] ? pixels[i+1] : 1;
-        buf[a++] = pixels[i+2] ? pixels[i+2] : 1;
-        perc = (i * 100) / IMAGE_SIZE;
-        if (perc - last_print > 5) {
-                last_print = perc;
-                print_progress(perc);
-        }
+    EnvPutChar(0);
+    EnvPutChar(DOOM_WIDTH >> 8);
+    EnvPutChar(DOOM_WIDTH);
+    EnvPutChar(DOOM_HEIGHT >> 8);
+    EnvPutChar(DOOM_HEIGHT);
+    for (int i = 0; i < IMAGE_SIZE; i+=4) {
+        EnvPutChar(pixels[i]);
+        EnvPutChar(pixels[i+1]);
+        EnvPutChar(pixels[i+2]);
         /* skip alpha */
     }
-    print_progress(100);
-    buf[a] = '\0';
 
     EnvPutChar('\n');
-    EnvPutChar('\0');
-    EnvPutStr(buf);
 
     EnvPutStr("\0\n[OP] End image output\n");
 }
