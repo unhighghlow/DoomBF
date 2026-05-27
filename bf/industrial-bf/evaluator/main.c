@@ -120,6 +120,7 @@ if (option_d) {
 }
 #endif
 
+        setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef JIT
         jit_run(program, tape);
 #else
