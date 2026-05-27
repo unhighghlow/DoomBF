@@ -258,7 +258,7 @@ copy:
         tape[dp%HOT_TAPE] += val; \
         dp -= CMD_copy_offset(inst); \
         CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page); \
-        pc+=4; \
+        pc+=8; \
         NEXT
 
         CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
@@ -270,7 +270,7 @@ copy:
                         COPY(-1, 1)
                 }
         }
-        pc+=4;
+        pc+=8;
         NEXT
 
 zero:

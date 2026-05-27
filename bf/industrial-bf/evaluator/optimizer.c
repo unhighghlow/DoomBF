@@ -274,10 +274,18 @@ static inline uint8_t proc_zero(struct revertable_stream *program_in, struct vec
         return 0;
 }
 
+static inline int64_t i64abs(int64_t v) {
+        if (v < 0)
+                return -v;
+        return v;
+}
+
 static inline uint8_t proc_move(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
         character chr;
         READ_CHAR_NOEOF(&chr, program_in);
+        uint64_t limit = 1<<PAGE_SIZE_POWER;
 
+        /* static temporarely removed */
         uint8_t offset_init = 0;
         struct vector offset_keys;   // short (signed)
         struct vector offset_values; // char (signed)
@@ -291,10 +299,10 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                 offset_values.length = 0;
         }
 
-        vector_push_ex(&offset_keys, int16_t, 0);
+        vector_push_ex(&offset_keys, int64_t, 0);
         vector_push(&offset_values, 0);
 
-        int32_t offset = 0;
+        int64_t offset = 0;
 
         while (1) {
                 READ_CHAR_NOEOF(&chr, program_in);
@@ -307,8 +315,10 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                 switch (chr) {
                         case '<':
                                 offset -= CR();
+                                break;
                         case '>':
                                 offset += CR();
+                                break;
                         case '+':
                                 change = CR();
                                 goto write_change;
@@ -316,20 +326,19 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                                 change = -CR();
                                 goto write_change;
                         write_change:
-                                if (offset >= INT16_MAX) return -1;
-                                if (offset <= INT16_MIN) return -1;
-
+                                if (i64abs(offset) > limit)
+                                        return -1;
                                 key_found = 0;
 
-                                for (uint64_t i = 0; i < offset_keys.length/2; i++) {
-                                        if (vector_read_ex(&offset_keys, int16_t, i) == offset) {
+                                for (uint64_t i = 0; i < offset_keys.length/8; i++) {
+                                        if (vector_read_ex(&offset_keys, int64_t, i) == offset) {
                                                 key_found = 1;
                                                 key_ind = i;
                                                 break;
                                         }
                                 }
                                 if (!key_found) {
-                                        vector_push_ex(&offset_keys, int16_t, offset);
+                                        vector_push_ex(&offset_keys, int64_t, offset);
                                         vector_push_ex(&offset_values, int8_t, change);
                                 } else {
                                         change += vector_read_ex(&offset_values, int8_t, key_ind);
@@ -345,8 +354,9 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                 }
         }
 
-        if (offset != 0) /* unbalanced loop */
+        if (offset != 0) { /* unbalanced loop */
                 return -1;
+        }
 
 
         /* output the instructions */
@@ -356,9 +366,14 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
         }
 
         for (uint32_t i = 1; i < offset_values.length; i++) {
-                vector_push(program_out, '^');
-                vector_push_ex(program_out, int16_t, vector_read_ex(&offset_keys, int16_t, i));
-                vector_push(program_out, offset_values.ptr[i]);
+                uint64_t v = vector_read_ex(&offset_keys, int64_t, i);
+                vector_push_ex(
+                        program_out,
+                        uint64_t,
+                          v&0x0000ffffffffffff
+                        | (((int64_t)offset_values.ptr[i]) << (8*6))
+                        | (((int64_t)'^') << (8*7))
+                );
         } 
         vector_push(program_out, '0');
 

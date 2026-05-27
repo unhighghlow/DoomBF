@@ -20,9 +20,13 @@ static inline uint8_t proc_rol_inst_comp(struct revertable_stream *program_in, s
         }
         uint64_t count = 1;
         uint64_t res;
+        uint64_t block;
         res = comp_read(program_in);
         count += res;
         while (count > 0) {
+                block = count;
+                if (block > limit)
+                        block = limit;
                 if (count <= 256) {
                         vector_push(program_out, inst);
                         vector_push(program_out, (uint8_t)count-1);
@@ -32,7 +36,7 @@ static inline uint8_t proc_rol_inst_comp(struct revertable_stream *program_in, s
                         vector_push_ex(
                                 program_out,
                                 uint64_t,
-                                count | (((int64_t)inst) << (8*7))
+                                block | (((int64_t)inst) << (8*7))
                         );
                 }
                 if (count < limit)
