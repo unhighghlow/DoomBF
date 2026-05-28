@@ -3,7 +3,7 @@
 
 [-]
 
->[-]+>[-]+<<[>->-<]>[>-]<[-<
+>+<[>-]>[>]<[-<
 
     | do stuff
     | you now on 1st cell
@@ -14,3 +14,4 @@
     | now you should be on 1st cell
 
 >]<
+@0
