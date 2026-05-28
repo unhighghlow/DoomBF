@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "crt/doom_env.h"
@@ -21,7 +22,7 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void EnvWrite(char *s, uint16_t length) {
+static inline void EnvWrite(char *s, uint16_t length) {
     #ifdef _BF
         register long a0 __asm__("a0") = 1; // stdout
         register const char *a1 __asm__("a1") = s;
@@ -32,10 +33,7 @@ void EnvWrite(char *s, uint16_t length) {
             : "r"(a1), "r"(a2), "r"(a7)
             : "memory");
     #else
-        for (int i = 0; i < length; i++) {
-            putc(s[i], stdout);
-        }
-        fflush(stdout);
+        write(STDOUT_FILENO, s, length);
     #endif
 }
 
@@ -131,9 +129,8 @@ int main(int argc, char *argv[]) {
 
     CrtDoomInit();
     output_image(pixels);
-    output_image(pixels);
 
-    char ev;
+    unsigned char ev;
     while (1) {
         EnvPutStr("\0[OP] Getting events\n");
         while (1) {
@@ -152,7 +149,7 @@ int main(int argc, char *argv[]) {
         CrtDoomIteration();
         output_image(pixels);
 #ifndef _BF
-        usleep(10000);
+        //usleep(1000);
 #endif
         step_clock(20000);
     }
