@@ -513,7 +513,7 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '!':
                 case '@':
                         printf("%c %lx\n", cmd, CMD_wide_arg(inst));
-                        return 8;
+                        return 16;
                 case '0':
                 case '.':
                 case ',':

@@ -236,16 +236,21 @@ static inline uint8_t proc_close_loop(struct revertable_stream *program_in, stru
 }
 
 static inline uint8_t proc_assert(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {
-        printf("not implemented: proc_assert\n");
-        return 1;
-        /*
-        uint8_t inst = program_in[*ind];
-        int8_t digit;
-        (*ind)++;
-        uint64_t val = parse_number(program_in, ind);
+        character inst;
+        character cur;
+        READ_CHAR_NOEOF(&inst, program_in);
+
+        uint64_t val = stream_read_number(program_in);
+        uint64_t comment = 0;
         if (val&0xff00000000000000) {
                 printf("error: `%c` assert value overflow: %lx\n", inst, val);
                 return 1;
+        }
+
+        PEEK_CHAR(&cur, program_in);
+        if (cur == '/') {
+                program_in->pushback_pos++;
+                comment = stream_read_number(program_in);
         }
 
         vector_push_ex(
@@ -253,8 +258,12 @@ static inline uint8_t proc_assert(struct revertable_stream *program_in, struct v
                 uint64_t,
                 val | (((int64_t)inst) << (8*7))
         );
+        vector_push_ex(
+                program_out,
+                uint64_t,
+                comment
+        );
         return 0;
-        */
 }
 
 static inline uint8_t proc_zero(struct revertable_stream *program_in, struct vector *program_out, struct loop_data *ld) {

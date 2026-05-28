@@ -146,6 +146,7 @@ void evaluate(uint8_t program[], CELL tape[]) {
         string assert_name;
         uint64_t assert_expected;
         uint64_t assert_got;
+        uint64_t assert_comment;
 #endif
 
         jumptable[0] = &&exit;
@@ -301,13 +302,16 @@ assert_value:
 
 assert_common:
         assert_expected = CMD_wide_arg(inst);
+        assert_comment = CMD_assert_com(inst);
         if (assert_expected != assert_got) {
                 printf("assertion failed: %s\n", assert_name);
-                printf("expected: 0x%lx\n", assert_expected);
-                printf("got: 0x%lx\n", assert_got);
+                if (assert_comment)
+                        printf("comment:  0x%016lx\n", assert_comment);
+                printf("expected: 0x%016lx\n", assert_expected);
+                printf("got:      0x%016lx\n", assert_got);
                 exit(1);
         }
-        pc+=8;
+        pc+=16;
         NEXT
 #endif
 

@@ -34,3 +34,7 @@ static inline int8_t CMD_copy_val(uint8_t *inst) {
 static inline uint64_t CMD_wide_arg(uint8_t *inst) {
         return ntohll((*(uint64_t*)&inst[0]))&0x00ffffffffffffff;
 }
+
+static inline uint64_t CMD_assert_com(uint8_t *inst) {
+        return ntohll((*(uint64_t*)&inst[8]));
+}
