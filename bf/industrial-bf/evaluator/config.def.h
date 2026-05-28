@@ -9,6 +9,12 @@
 //                     slows down execution even if -d
 //                     isn't used (mandelbrot 12s->15s) */
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
-// #define   DEBUGGER_TAPE_VIEW     3
+// #define   DEBUGGER_TAPE_VIEW     8
 #define ASSERTS
 #define CELL_FORMAT_STRING "%2x"
+
+/* Advanced optimization options */
+// #define FAST_ROL
+#define JIT
+#define READ_BLOCK_SIZE 0x20000
+#define ROLLBACK_CLEAR_MIN_SIZE 0xf0000

@@ -7,7 +7,7 @@ uint64_t round_up_to_power_of_two(uint64_t n) {
 }
 
 void *safe_malloc(uint64_t size) {
-        void *p = malloc(size);
+        void *p = calloc(1, size);
         if (!p) {
                 printf("memory allocation failed\n");
                 exit(1);
@@ -108,7 +108,7 @@ uint64_t _hton_custom(uint64_t val, uint8_t len) {
         abort();
 }
 
-uint8_t is_comment(character inst) {
+static inline uint8_t is_comment(character inst) {
         return !(
                 inst == '+'
              || inst == '-'
@@ -128,7 +128,7 @@ uint8_t is_comment(character inst) {
         );
 }
 
-uint8_t is_whitespace(character inst) {
+static inline uint8_t is_whitespace(character inst) {
         return (
                 inst == ' '
              || inst == '\t'

@@ -3,8 +3,10 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
+#ifndef NOTESTS
     run_vec_tests();
     run_deque_tests();
+#endif
     
     if (argc != 2) {
         printf("usage: hackablebf test.b\n");

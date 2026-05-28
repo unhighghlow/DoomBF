@@ -493,13 +493,19 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '<':
                         printf("%c %3u\n", cmd, CMD_rol_arg(inst));
                         return 2;
+                case 'r':
+                        printf("%c %lx\n", '>', CMD_wide_arg(inst));
+                        return 8;
+                case 'l':
+                        printf("%c %lx\n", '<', CMD_wide_arg(inst));
+                        return 8;
                 case '/':
                 case '\\':
                         printf("%c %3d\n", cmd, CMD_simple_arg(inst));
                         return 2;
                 case '^':
-                        printf("%c %5d %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));
-                        return 4;
+                        printf("%c %5lld %3d\n", cmd, CMD_copy_offset(inst), CMD_copy_val(inst));
+                        return 8;
                 case '[':
                 case ']':
                         printf("%c %lx\n", cmd, CMD_wide_arg(inst)+8);
@@ -507,7 +513,7 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '!':
                 case '@':
                         printf("%c %lx\n", cmd, CMD_wide_arg(inst));
-                        return 8;
+                        return 16;
                 case '0':
                 case '.':
                 case ',':
@@ -518,7 +524,7 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                         printf("end\n");
                         return 0;
                 default:
-                        printf("??? %lx\n", *(uint64_t*)inst);
+                        printf("??? %016lx\n", ntohll(*(uint64_t*)inst));
                         return 1;
         }
 }

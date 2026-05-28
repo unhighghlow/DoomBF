@@ -18,14 +18,19 @@
 
 #include <errno.h>
 
-#pragma GCC poison long
-#pragma GCC poison int
+#include "config.h"
+
+#ifdef JIT
+#include <lightning.h>
+#endif
 
 typedef char* string;
 typedef char character;
 
-uint8_t option_d;
-uint8_t option_a;
+uint8_t option_d = 0;
+uint8_t option_a = 0;
+uint8_t option_o = 0;
+uint8_t option_c = 0;
 
 #include "util.c"
 #include "vector.c"
@@ -38,14 +43,15 @@ uint8_t option_a;
 #endif
 
 #include "optimizer.c"
-
-#include "config.h"
+#ifdef JIT
+#include "jit.c"
+#endif
 
 string read_file(string filename, uint64_t *program_length);
 void evaluate(uint8_t program[], CELL *tape);
 
 void usage(string exec) {
-        fprintf(stderr, "usage: %s [-da] [--] program.b\n",
+        fprintf(stderr, "usage: %s [-daoc] [--] program.b\n",
                 exec);
         exit(1);
 }
@@ -55,14 +61,18 @@ int32_t main(int32_t argc, string argv[]) {
         string addrmap_filename;
         unsigned char opt;
 
-        while ((opt = getopt(argc, argv, "da")) != 0xff) {
+        while ((opt = getopt(argc, argv, "daoc")) != 0xff) {
                 switch (opt) {
                     case 'd':
+                    case 'o':
 #ifndef DEBUGGER
                         fprintf(stderr, "This program was compiled without debugger support\n");
                         exit(1);
 #endif
-                        option_d = 1;
+                        if (opt == 'd')
+                                option_d = 1;
+                        else
+                                option_o = 1;
                         break;
                     case 'a':
 #ifndef ASSERTS
@@ -70,6 +80,9 @@ int32_t main(int32_t argc, string argv[]) {
                         exit(1);
 #endif
                         option_a = 1;
+                        break;
+                    case 'c':
+                        option_c = 1;
                         break;
                     default: /* '?' */
                         usage(argv[0]);
@@ -79,19 +92,20 @@ int32_t main(int32_t argc, string argv[]) {
         if (optind != argc - 1) usage(argv[0]);
         filename = argv[optind];
         
-        uint64_t program_length;
-        string program_raw = (string) read_file(filename, &program_length);
-        if (!program_raw) exit(1);
+        FILE *fd = fopen(filename, "r");
+        if (!fd) {
+                perror("opening file");
+                exit(1);
+        }
 
 #ifdef DEBUGGER
 if (option_d) {
         sourcemap_init();
 }
 #endif
-        uint8_t *program = optimize(program_raw);
+        uint8_t *program = optimize(fd);
 
         CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
-        memset(tape, 0, HOT_TAPE * (sizeof (CELL)));
 
         load_page(tape, PAGE_COUNT-1);
         load_page(tape, 0);
@@ -106,7 +120,16 @@ if (option_d) {
 }
 #endif
 
+        setvbuf(stdout, NULL, _IONBF, 0);
+#ifdef JIT
+        jit_run(program, tape);
+#else
         evaluate(program, tape);
+#endif
+
+        fclose(fd);
+        free(tape);
+        free(program);
 }
 
 const void* jumptable[0x100];
@@ -123,19 +146,20 @@ void evaluate(uint8_t program[], CELL tape[]) {
         string assert_name;
         uint64_t assert_expected;
         uint64_t assert_got;
+        uint64_t assert_comment;
 #endif
 
         jumptable[0] = &&exit;
         jumptable['+'] = &&plus;
         jumptable['-'] = &&minus;
         jumptable['>'] = &&right;
+        jumptable['r'] = &&right_wide;
         jumptable['<'] = &&left;
+        jumptable['l'] = &&left_wide;
         jumptable['.'] = &&output;
         jumptable[','] = &&input;
         jumptable['['] = &&loopstart;
         jumptable[']'] = &&loopend;
-        jumptable['/'] = &&divide;
-        jumptable['\\'] = &&invdivide;
         jumptable['^'] = &&copy;
         jumptable['0'] = &&zero;
 #ifdef DEBUGGER
@@ -181,15 +205,27 @@ right:
         pc+=2;
         NEXT
 
+right_wide:
+        dp+=CMD_wide_arg(inst);
+        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        pc+=8;
+        NEXT
+
 left:
         dp-=CMD_rol_arg(inst);
         CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=2;
         NEXT
 
+left_wide:
+        dp-=CMD_wide_arg(inst);
+        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        pc+=8;
+        NEXT
+
 output:
 #ifdef DEBUGGER
-if (option_d) {
+if (option_d && !option_o) {
         debugger_out(tape[dp%HOT_TAPE]);
 } else {
         putchar(tape[dp%HOT_TAPE]);
@@ -201,10 +237,7 @@ if (option_d) {
         NEXT
 
 input:
-        character buf[2];
-        buf[0] = tape[dp%HOT_TAPE];
-        fgets(buf, 2, stdin);
-        tape[dp%HOT_TAPE] = buf[0];
+        read(STDIN_FILENO, &tape[dp%HOT_TAPE], 1);
         pc+=1;
         NEXT
 
@@ -220,31 +253,6 @@ loopend:
         pc+=8;
         NEXT
 
-divide:
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst))) {
-#ifdef DEBUGGER
-if (option_d) {
-                printf("warning: going into an infinite loop\n");
-}
-#endif
-                while (1) {}
-        }
-
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
-        pc+=2;
-        NEXT
-
-invdivide:
-        tape[dp%HOT_TAPE] = -tape[dp%HOT_TAPE];
-        
-        if (tape[dp%HOT_TAPE] % CMD_simple_arg(inst) && is_power_of_2(CMD_simple_arg(inst)))
-                while (1) {}
-
-        tape[dp%HOT_TAPE] /= CMD_simple_arg(inst);
-
-        pc+=2;
-        NEXT
-
 copy:
 #define COPY(dir, invdir) \
         dp += CMD_copy_offset(inst); \
@@ -252,7 +260,7 @@ copy:
         tape[dp%HOT_TAPE] += val; \
         dp -= CMD_copy_offset(inst); \
         CHECK_PAGE_TRANSITION(tape, invdir, dp, last_page); \
-        pc+=4; \
+        pc+=8; \
         NEXT
 
         CELL val = tape[dp%HOT_TAPE] * CMD_copy_val(inst);
@@ -264,7 +272,7 @@ copy:
                         COPY(-1, 1)
                 }
         }
-        pc+=4;
+        pc+=8;
         NEXT
 
 zero:
@@ -294,13 +302,16 @@ assert_value:
 
 assert_common:
         assert_expected = CMD_wide_arg(inst);
+        assert_comment = CMD_assert_com(inst);
         if (assert_expected != assert_got) {
                 printf("assertion failed: %s\n", assert_name);
-                printf("expected: 0x%lx\n", assert_expected);
-                printf("got: 0x%lx\n", assert_got);
+                if (assert_comment)
+                        printf("comment:  0x%016lx\n", assert_comment);
+                printf("expected: 0x%016lx\n", assert_expected);
+                printf("got:      0x%016lx\n", assert_got);
                 exit(1);
         }
-        pc+=8;
+        pc+=16;
         NEXT
 #endif
 

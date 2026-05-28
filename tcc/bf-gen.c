@@ -1,260 +1,485 @@
-/*
- *  Brainfuck code generator for TCC
- */
-
-/******************************************************/
-
 #ifdef TARGET_DEFS_ONLY
 
-/* number of available registers */
-#define NB_REGS         5
-#define NB_ASM_REGS     8
-#define CONFIG_TCC_ASM
+/* pointer size, in bytes */
+#define PTR_SIZE 4
+
+/* Number of registers available to allocator */
+#define NB_REGS 8 // R0 - R7
+
+/* long double size and alignment, in bytes */
+#define LDOUBLE_SIZE  16
+#define LDOUBLE_ALIGN 16
 
 /* a register can belong to several classes. The classes must be
    sorted from more general to more precise (see gv2() code which does
    assumptions on it). */
 #define RC_INT     0x0001 /* generic integer register */
 #define RC_FLOAT   0x0002 /* generic float register */
-#define RC_EAX     0x0004
-#define RC_ST0     0x0008 
-#define RC_ECX     0x0010
-#define RC_EDX     0x0020
+#define RC_R(n)    (0x4 << n)
 
-#define RC_IRET    RC_EAX /* function return: integer register */
-#define RC_LRET    RC_EDX /* function return: second integer register */
-#define RC_FRET    RC_ST0 /* function return: float register */
+#define RC_IRET    RC_R(1) /* function return: integer register */
+#define RC_IRE2    RC_R(2) /* function return: second integer register */
+#define RC_FRET    RC_R(1) /* function return: float register */
 
 /* pretty names for the registers */
 enum {
-    TREG_R0 = 0,
+    TREG_R0  = 0,
     TREG_R1,
     TREG_R2,
     TREG_R3,
     TREG_R4,
     TREG_R5,
     TREG_R6,
-    TREG_R7
+    TREG_R7,
+    TREG_SP  = 8
 };
 
 /* return registers for function */
-#define REG_IRET TREG_R0 /* single word int return register */
-#define REG_LRET TREG_R1 /* second word return register (for long long) */
-#define REG_FRET TREG_R2 /* float return register */
+#define REG_IRET TREG_R1 /* single word int return register */
+#define REG_IRE2 TREG_R2 /* second word return register (for long long) */
+#define REG_FRET TREG_R1 /* float return register */
 
 /* defined if function parameters must be evaluated in reverse order */
 #define INVERT_FUNC_PARAMS
 
-/* defined if structures are passed as pointers. Otherwise structures
-   are directly pushed on stack. */
-/* #define FUNC_STRUCT_PARAM_AS_PTR */
-
-/* pointer size, in bytes */
-#define PTR_SIZE 4
-
-/* long double size and alignment, in bytes */
-#define LDOUBLE_SIZE  12
-#define LDOUBLE_ALIGN 4
 /* maximum alignment (for aligned attribute support) */
 #define MAX_ALIGN     8
 
-/******************************************************/
-#else /* ! TARGET_DEFS_ONLY */
-/******************************************************/
+#define CHAR_IS_UNSIGNED
+
+#else
+
+#define USING_GLOBALS
 #include "tcc.h"
 
-ST_FUNC void g(int c)
-{
-    printf("g(%d)", c);
-}
+ST_DATA const int reg_classes[NB_REGS] = {
+  RC_INT | RC_R(0),
+  RC_INT | RC_R(1),
+  RC_INT | RC_R(2),
+  RC_INT | RC_R(3),
+  RC_INT | RC_R(4),
+  RC_INT | RC_R(5),
+  RC_INT | RC_R(6),
+  RC_INT | RC_R(7)
+};
 
+ST_DATA const char * const target_machine_defs =
+    "__brainfuck\0"
+    ;
+
+static int cur_block_ind = 0;
+static int jump_generated = 0;
+
+/* Output an unsigned 32-bit integer */
 ST_FUNC void o(unsigned int c)
 {
-    printf("o(%d:", c);
-    while (c) {
-        g(c);
-        c = c >> 8;
+    int ind1 = ind + 4;
+    if (nocode_wanted)
+        return;
+    if (ind1 > cur_text_section->data_allocated)
+        section_realloc(cur_text_section, ind1);
+    write32le(cur_text_section->data + ind, c);
+    ind = ind1;
+}
+
+/* Output a single character */
+ST_FUNC void oCHAR(char c)
+{
+    int ind1 = ind + 1;
+    if (nocode_wanted)
+        return;
+    if (ind1 > cur_text_section->data_allocated)
+        section_realloc(cur_text_section, ind1);
+    cur_text_section->data[ind] = c;
+    ind = ind1;
+}
+
+/* Output a relocatable value.
+ * It is converted to a sequence of pluses
+ * in tccbf.c : bf_output_file */
+ST_FUNC void oRELOC(unsigned int c)
+{
+    oCHAR('\0');
+    o(c);
+}
+
+/* Output a string */
+ST_FUNC void oSTR(char *s)
+{
+    char chr;
+    while ((chr = *(s++))) {
+        oCHAR(chr);
     }
-    printf(")");
 }
 
-ST_FUNC void gen_le16(int v)
-{
-    printf("gen_le16(%d:", v);
-    g(v);
-    g(v >> 8);
-    printf(")");
+/* Output a newline
+ *
+ * Does nothing if do_debug is off*/
+ST_FUNC void oENDL() {
+    if (!(TCC_STATE_VAR(do_debug))) return;
+
+    oCHAR('\n');
 }
 
-ST_FUNC void gen_le32(int c)
+/* Output a comment (remark), replacing
+ * all instructions with `_`, ending
+ * with \n<space><space>
+ *
+ * Does nothing if do_debug is off*/
+ST_FUNC void oREM(char *s)
 {
-    printf("gen_le32(%d:", c);
-    g(c);
-    g(c >> 8);
-    g(c >> 16);
-    g(c >> 24);
-    printf(")");
+    if (!(TCC_STATE_VAR(do_debug))) return;
+    char chr;
+    while ((chr = *(s++))) {
+        if (chr == '+' || chr == '-' ||
+            chr == '<' || chr == '>' ||
+            chr == '[' || chr == ']' ||
+            chr == '.' || chr == ',') {
+            oCHAR('_');
+            continue;
+        }
+        oCHAR(chr);
+    }
+    oSTR("\n  ");
 }
 
-/* output a symbol and patch all calls to it */
-ST_FUNC void gsym_addr(int t, int a)
+/* Generate the movement from the base
+ * address to a register */
+ST_FUNC void oTO(int reg)
 {
-    printf("gsym_addr(%d/%d:", t, a);
+    reg++;
+    while (reg) {
+        oCHAR('>');
+        reg--;
+    }
+}
+
+/* Generate the return from a register
+ * to the default location */
+ST_FUNC void oFROM(int reg)
+{
+    reg++;
+    while (reg) {
+        oCHAR('<');
+        reg--;
+    }
+}
+
+/* Output `x` `chr`s */
+ST_FUNC void oREP(int x, char chr)
+{
+    while (x) {
+        oCHAR(chr);
+        x--;
+    }
+}
+
+/* Output `x` pluses */
+ST_FUNC void oSET(int x)
+{
+    oSTR("[-]");
+    oREP(x, '+');
+}
+
+/* Output code that copies A to B*/
+ST_FUNC void oCOPY(int a, int b) {
+    oTO(a);
+    oCHAR('[');
+      oCHAR('-');
+      oFROM(a);
+      oTO(b);
+      oCHAR('+');
+      oFROM(b);
+      // to scrap
+      oCHAR('+');
+      // from scrap
+      oTO(a);
+    oCHAR(']');
+    oFROM(a);
+    // to scrap
+    oCHAR('[');
+      oCHAR('-');
+      oTO(a);
+      oCHAR('+');
+      oFROM(a);
+    oCHAR(']');
+}
+
+/* Generate the beginning of a block */
+ST_FUNC void oBBEG()
+{
+    /* Block indexing starts at 1,
+     * so we increment before we
+     * generate the block */
+    cur_block_ind++;
+    jump_generated = 0;
+
+    oREM("block");
+    // next  'block_id   0       0
+    oSTR("->[-]+>[-]+<<");
+    // next  'block_id   1       1
+    oSTR("[>->-<]>[>-]<[->\n");
+    // next   block_id   0      '0
+}
+
+/* Generate the ending of a block */
+ST_FUNC void oBEND()
+{
+    oREM("end");
+    if (!jump_generated) {
+        oREM("&jump");
+        oSTR("<<<");
+        oSET(cur_block_ind + 1);
+        oSTR(">>>");
+    }
+    oSTR("<]<\n");
+}
+
+// Patch all branches in list pointed to by t to branch to a:
+ST_FUNC void gsym_addr(int t_, int a_)
+{
+    uint32_t t = t_;
+    uint32_t a = a_;
+    tcc_error("implement me: %s", __FUNCTION__);
     while (t) {
         unsigned char *ptr = cur_text_section->data + t;
-        uint32_t n = read32le(ptr); /* next value */
-        write32le(ptr, a - t - 4);
-        t = n;
+        uint32_t next = read32le(ptr);
+        if (a - t + 0x8000000 >= 0x10000000)
+            tcc_error("branch out of range");
+        write32le(ptr, (a - t == 4 ? 0xd503201f : // nop
+                        0x14000000 | ((a - t) >> 2 & 0x3ffffff))); // b
+        t = next;
     }
-    printf(")");
 }
 
-ST_FUNC void gsym(int t)
-{
-    printf("gsym(%d:", t);
-    gsym_addr(t, ind);
-    printf(")");
-}
-
-/* load 'r' from value 'sv' */
 ST_FUNC void load(int r, SValue *sv)
 {
-    printf("load(r%d <- )", r);
+    int fr = sv->r;
+    int v = fr & VT_VALMASK;
+    char fc = sv->c.i;
+    if (fr & VT_LVAL) {
+        if (v == VT_LOCAL) {
+            oREM("local load");
+
+            int bt = sv->type.t & VT_BTYPE;
+            int align, size = type_size(&sv->type, &align);
+            if (is_float(bt))
+              tcc_error("unimp: load-local(float)");
+            else if (bt == VT_FUNC)
+              size = PTR_SIZE;
+            printf("fc: %d\n", fc);
+        } else if (v < VT_CONST) {
+            oREM("reg load");
+
+            oCOPY(v, r);
+        } else {
+            oREM("?NOT IMPLEMENTED: non-local lval load?");
+
+            tcc_error("unimp: load(non-local lval): 0x%x", v);
+        }
+    } else if (v == VT_CONST) {
+        oREM("constload");
+        if (fr & VT_SYM)
+          tcc_error("unimp: load(sym)");
+        if (is_float(sv->type.t))
+          tcc_error("unimp: load(float)");
+        if (fc >> 8)
+          tcc_error("unimp: load(large const) (0x%x)", fc);
+
+        oTO(r);
+        oSET(fc);
+        oFROM(r);
+    } else
+        oREM("?NOT IMPLEMENTED: load?");
+
+    oENDL();
 }
 
-/* store register 'r' in lvalue 'v' */
-ST_FUNC void store(int r, SValue *v)
+ST_FUNC void store(int r, SValue *sv)
 {
-    printf("store(r%d ->)", r);
+    int fr = sv->r & VT_VALMASK;
+    int fc = sv->c.i;
+    int ft = sv->type.t;
+    int bt = ft & VT_BTYPE;
+    int align, size = type_size(&sv->type, &align);
+    if (fr == VT_LOCAL) {
+        if (is_float(bt))
+          tcc_error("unimp: store(float)");
+        if (bt == VT_STRUCT)
+          tcc_error("unimp: store(struct)");
+        if (size != 1)
+          tcc_error("unimp: non-byte store: %d", size);
+
+        if (fc > 0) {
+            tcc_error("positive stack offset: %d", fc);
+        }
+        oREM("store (local)");
+
+        oTO(TREG_SP);
+        oREP(-fc, '-');
+        oFROM(TREG_SP);
+        //oSTORE(r, TREG_SP);
+        oTO(TREG_SP);
+        oREP(-fc, '+');
+        oFROM(TREG_SP);
+
+    } else
+        oREM("?NOT IMPLEMENTED: store?");
+    oENDL();
 }
 
-/* Return the number of registers needed to return the struct, or 0 if
-   returning via struct pointer. */
-ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret, int *align, int *regsize)
+static void gcall(void)
 {
-    printf("gfunc_sret()");
-    return 0;
+    if ((vtop->r & (VT_VALMASK | VT_LVAL)) == VT_CONST &&
+        ((vtop->r & VT_SYM) && vtop->c.i == (int)vtop->c.i)) {
+
+        oREM("call");
+        oSTR("<<<[-]");
+
+        /* constant symbolic case -> simple relocation */
+        greloca(cur_text_section, vtop->sym, ind,
+                R_RISCV_CALL_PLT, (int)vtop->c.i);
+
+        oRELOC(1);
+        oSTR(">>>\n");
+    } else {
+        tcc_error("unimp: indirect call");
+    }
+    oREM("\n");
 }
 
 ST_FUNC void gfunc_call(int nb_args)
 {
-    printf("gfunc_call(%d)", nb_args);
+    int i, align, size, aireg;
+    aireg = 0;
+    for (i = 0; i < nb_args; i++) {
+        size = type_size(&vtop[-i].type, &align);
+        if (size > 8 || ((vtop[-i].type.t & VT_BTYPE) == VT_STRUCT)
+            || is_float(vtop[-i].type.t))
+          tcc_error("unimp: call arg %d wrong type", nb_args - i);
+        if (aireg >= 8)
+          tcc_error("unimp: too many register args");
+        vrotb(i+1);
+        gv(RC_R(aireg));
+        vrott(i+1);
+        aireg++;
+    }
+    vrotb(nb_args + 1);
+    gcall();
+
+    jump_generated = 1;
+    oBEND();
+    oBBEG();
+
+    vtop -= nb_args + 1;
 }
 
-ST_FUNC void gfunc_prolog(CType *func_type)
+ST_FUNC void gfunc_prolog(Sym *func_sym)
 {
-    func_type->ref->type.t = (func_type->ref->type.t & (~VT_BTYPE)) | VT_INT;
-    printf("gfunc_prolog()");
+    oBBEG();
 }
-
+ST_FUNC void gen_va_start(void)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+ST_FUNC void gen_va_arg(CType *t)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret,
+                       int *align, int *regsize)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+ST_FUNC void gfunc_return(CType *func_type)
+{
+    oREM("return");
+    oENDL();
+    vtop--;
+}
 ST_FUNC void gfunc_epilog(void)
 {
-    printf("gfunc_epilog()");
+    oBEND();
+}
+ST_FUNC void gen_fill_nops(int bytes)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
+    if ((bytes & 3))
+      tcc_error("alignment of code section not multiple of 4");
 }
 
+// Generate forward branch to label:
 ST_FUNC int gjmp(int t)
 {
-    printf("gjmp(%d)", t);
-    return 0;
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
+// Generate branch to known address:
 ST_FUNC void gjmp_addr(int a)
 {
-    printf("gjmp_addr(%d)", a);
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+
+ST_FUNC int gjmp_cond(int op, int t)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+
+ST_FUNC int gjmp_append(int n, int t)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC int gtst(int inv, int t)
 {
-    printf("gtst(%d, %d)", inv, t);
-    return 0;
+    tcc_error("implement me: %s", __FUNCTION__);
 }
-
 ST_FUNC void gen_opi(int op)
 {
-    printf("gen_opi(%d)", op);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_opf(int op)
 {
-    printf("gen_opf(%d)", op);
+    tcc_error("implement me: %s", __FUNCTION__);
+}
+ST_FUNC void gen_cvt_sxtw(void)
+{
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_itof(int t)
 {
-    printf("gen_cvt_itof(%d)", t);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_ftoi(int t)
 {
-    printf("gen_cvt_ftoi(%d)", t);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_cvt_ftof(int t)
 {
-    printf("gen_cvt_ftof(%d)", t);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void ggoto(void)
 {
-    printf("ggoto()");
+    tcc_error("implement me: %s", __FUNCTION__);
 }
-
 ST_FUNC void gen_vla_sp_save(int addr)
 {
-    printf("gen_vla_sp_save(%d)", addr);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_vla_sp_restore(int addr)
 {
-    printf("gen_vla_sp_restore(%d)", addr);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
 
 ST_FUNC void gen_vla_alloc(CType *type, int align)
 {
-    printf("gen_vla_alloc(%d)", align);
+    tcc_error("implement me: %s", __FUNCTION__);
 }
-
-ST_FUNC void gen_expr32(ExprValue *pe)
-{
-    printf("gen_expr32()");
-}
-
-
-/* If T (a token) is of the form "%reg" returns the register
-   number and type, otherwise return -1.  */
-ST_FUNC int asm_parse_regvar (int t)
-{
-    printf("asm_parse_regvar(%d)", t);
-    return 0;
-}
-
-ST_FUNC void asm_opcode(TCCState *s1, int opcode)
-{
-    printf("asm_opcode(%d)",opcode);
-}
-
-ST_FUNC void subst_asm_operand(CString *add_str, SValue *sv, int modifier)
-{
-    printf("subst_asm_operand(%d)", modifier);
-}
-
-ST_FUNC void asm_gen_code(ASMOperand *operands, int nb_operands, int nb_outputs, int is_output, uint8_t *clobber_regs, int out_reg)
-{
-    printf("asm_gen_code()");
-}
-
-ST_FUNC void asm_clobber(uint8_t *clobber_regs, const char *str)
-{
-    printf("asm_clobber()");
-}
-
-ST_FUNC void asm_compute_constraints(ASMOperand *operands, int nb_operands, int nb_outputs, const uint8_t *clobber_regs, int *pout_reg)
-{
-        printf("asm_compute_constraints()");
-}
-
 #endif
-
-
-
 

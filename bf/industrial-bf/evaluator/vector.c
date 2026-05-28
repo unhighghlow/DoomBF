@@ -28,6 +28,13 @@ void vector_extend(struct vector *vec, uint64_t new_capacity) {
         vec->ptr = safe_realloc(vec->ptr, vec->capacity);
 }
 
+void vector_append(struct vector *vec, uint8_t *buf, uint64_t count) {
+        uint64_t base = vec->length;
+        vec->length += count;
+        vector_extend(vec, vec->length);
+        memcpy(vec->ptr+base, buf, count);
+}
+
 void vector_push(struct vector *vec, uint8_t val) {
         vec->length++;
         vector_extend(vec, vec->length);
@@ -48,6 +55,25 @@ void vector_drop(struct vector *vec) {
 void *vector_unwrap(struct vector *vec) {
         uint8_t *p = safe_realloc(vec->ptr, vec->length);
         return p;
+}
+
+void vector_truncate_start(struct vector *vec, uint64_t items) {
+        if (items > vec->length) {
+                printf("truncate_start: too many items\n");
+                abort();
+        }
+        if (!items) return;
+
+        memmove(vec->ptr, vec->ptr+items, vec->length-items);
+        vec->length -= items;
+}
+
+void vector_debug(struct vector *vec) {
+        printf("%d(%d): ", vec->length, vec->capacity);
+        for (uint64_t i = 0; i < vec->length; i++) {
+                printf(" %d", vec->ptr[i]);
+        }
+        printf("\n");
 }
 
 #define vector_push_ex(vec, type, val) _vector_push_multibyte(vec, val, sizeof (type))
