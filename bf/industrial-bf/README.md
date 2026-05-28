@@ -118,6 +118,15 @@ The expected value may be specified after the instruction in hexadecimal:
 !ff
 ```
 
+An 8-byte comment can be added to the assertion (also written in hexadecimal), like this:
+```
+>-
+@1/deadbeef
+!ff/cafebabe
+```
+
+It will be displayed if the assertion fails.
+
 If the expected value isn't specified, it defaults to 0.
 
 ## Internal representation
