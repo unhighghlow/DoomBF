@@ -21,37 +21,39 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void EnvPutChar(int c) {
-#ifdef _BF
-    char cc = c;
-
-    register long a0 __asm__("a0") = 1; // stdout
-    register const char *a1 __asm__("a1") = &cc;
-    register long a2 __asm__("a2") = 1;
-    register long a7 __asm__("a7") = 64; // write
-    __asm__ volatile ("ecall"
-        : "+r"(a0)
-        : "r"(a1), "r"(a2), "r"(a7)
-        : "memory");
-#else
-    putc(c, stdout);
-    if (c == '\n') {
+void EnvWrite(char *s, uint16_t length) {
+    #ifdef _BF
+        register long a0 __asm__("a0") = 1; // stdout
+        register const char *a1 __asm__("a1") = s;
+        register long a2 __asm__("a2") = length;
+        register long a7 __asm__("a7") = 64; // write
+        __asm__ volatile ("ecall"
+            : "+r"(a0)
+            : "r"(a1), "r"(a2), "r"(a7)
+            : "memory");
+    #else
+        for (int i = 0; i < length; i++) {
+            putc(s[i], stdout);
+        }
         fflush(stdout);
-    }
-#endif
+    #endif
+}
+
+void EnvPutChar(int c) {
+    EnvWrite((char *)&c, 1);
 }
 
 void EnvPutStr(char *s) {
-#ifdef _BF
-    register const char *a1 __asm__("a1") = s;
-    register long a7 __asm__("a7") = 86; // fast_write
-    __asm__ volatile ("ecall"
-        :
-        : "r"(a1), "r"(a7)
-        : "memory");
-#else
-    printf("%s", s+1);
-#endif
+    #ifdef _BF
+        register const char *a1 __asm__("a1") = s;
+        register long a7 __asm__("a7") = 86; // write_fast
+        __asm__ volatile ("ecall"
+            :
+            : "r"(a1), "r"(a7)
+            : "memory");
+    #else
+        printf("%s", s+1);
+    #endif
 }
 
 char EnvGetCharBlock() {
@@ -167,62 +169,22 @@ void step_clock(int step_us) {
     g_BrainfuckDoomControlRegs.time_usec = cur_time_us;
 }
 
-#define BUF_SIZE (DOOM_WIDTH * DOOM_HEIGHT * 3 + 6)
-
-#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
-#define PBWIDTH 60
-
-void print_progress(int val) {
-    int lpad = (int) (val * PBWIDTH / 100);
-    int rpad = PBWIDTH - lpad;
-    static char buf[PBWIDTH+4];
-    buf[0] = '\0';
-    buf[1] = '\r';
-    buf[2] = '[';
-    buf[PBWIDTH+3] = ']';
-    for (int i = 3; i < PBWIDTH+3; i++) {
-        if (i < val+3)
-            buf[i] = '|';
-        else
-            buf[i] = ' ';
-    }
-    EnvPutStr(buf);
-}
-
 void output_image(unsigned char *pixels) {
     EnvPutStr("\0[OP] Start image output\n");
 
-    static unsigned char buf[BUF_SIZE];
-    int i;
-    int last_print = -100;
-    int perc = 0;
-
-    buf[0] = '\0';
-    buf[1] = DOOM_WIDTH >> 8;
-    buf[2] = DOOM_WIDTH & 0xff;
-    buf[3] = DOOM_HEIGHT >> 8;
-    buf[4] = DOOM_HEIGHT & 0xff;
-
-    size_t a = 5;
-    for (i = 0; i < IMAGE_SIZE; i+=4) {
-        buf[a++] = pixels[i] ? pixels[i] : 1;
-        buf[a++] = pixels[i+1] ? pixels[i+1] : 1;
-        buf[a++] = pixels[i+2] ? pixels[i+2] : 1;
-        perc = (i * 100) / IMAGE_SIZE;
-        if (perc - last_print > 5) {
-                last_print = perc;
-                print_progress(perc);
-        }
+    EnvPutChar(0);
+    EnvPutChar(DOOM_WIDTH >> 8);
+    EnvPutChar(DOOM_WIDTH);
+    EnvPutChar(DOOM_HEIGHT >> 8);
+    EnvPutChar(DOOM_HEIGHT);
+    for (int i = 0; i < IMAGE_SIZE; i+=4) {
+        EnvWrite(pixels + i, 3);
         /* skip alpha */
     }
-    print_progress(100);
-    buf[a] = '\0';
 
     EnvPutChar('\n');
-    EnvPutChar('\0');
-    EnvPutStr(buf);
 
-    EnvPutStr("\0\n[OP] End image output\n");
+    EnvPutStr("\0[OP] End image output\n\n");
 }
 
 void process_keyevent(char event) {
