@@ -13,7 +13,7 @@ void assert(uint8_t kind, uint64_t exp, uint64_t got, uint64_t com) {
                 assert_name = "location";
         }
         if (kind == 1) {
-                assert_name = "kind";
+                assert_name = "value";
         }
         printf("assertion failed: %s\n", assert_name);
         if (com)

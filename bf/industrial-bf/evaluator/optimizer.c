@@ -360,6 +360,16 @@ static inline uint8_t proc_move(struct revertable_stream *program_in, struct vec
                         case ',':
                         case '.':
                                 return -1;
+                        default:
+#ifdef ASSERTS
+                                if (chr == '@'
+                                 || chr == '!')
+                                        return -1;
+#endif
+#ifdef DEBUGGER
+                                if (chr == '#')
+                                        return -1;
+#endif
                 }
         }
 
