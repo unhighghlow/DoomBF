@@ -31,11 +31,15 @@ uint8_t option_d = 0;
 uint8_t option_a = 0;
 uint8_t option_o = 0;
 uint8_t option_c = 0;
+uint8_t option_x = 0;
+
+CELL *tape;
 
 #include "util.c"
 #include "vector.c"
 #include "infinite-tape.c"
 #include "command.c"
+#include "dump.c"
 
 #ifdef DEBUGGER
 #include "sourcemaps.c"
@@ -48,7 +52,7 @@ uint8_t option_c = 0;
 #endif
 
 string read_file(string filename, uint64_t *program_length);
-void evaluate(uint8_t program[], CELL *tape);
+void evaluate(uint8_t program[]);
 
 void usage(string exec) {
         fprintf(stderr, "usage: %s [-daoc] [--] program.b\n",
@@ -84,6 +88,9 @@ int32_t main(int32_t argc, string argv[]) {
                     case 'c':
                         option_c = 1;
                         break;
+                    case 'x':
+                        option_x = 1;
+                        break;
                     default: /* '?' */
                         usage(argv[0]);
                 }
@@ -105,7 +112,7 @@ if (option_d) {
 #endif
         uint8_t *program = optimize(fd);
 
-        CELL *tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
+        tape = safe_malloc(HOT_TAPE * (sizeof (CELL)));
 
         load_page(tape, PAGE_COUNT-1);
         load_page(tape, 0);
@@ -122,9 +129,9 @@ if (option_d) {
 
         setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef JIT
-        jit_run(program, tape);
+        jit_run(program);
 #else
-        evaluate(program, tape);
+        evaluate(program);
 #endif
 
         fclose(fd);
@@ -134,7 +141,7 @@ if (option_d) {
 
 const void* jumptable[0x100];
 
-void evaluate(uint8_t program[], CELL tape[]) {
+void evaluate(uint8_t program[]) {
 #ifdef DEBUGGER
         debugger_init();
 #endif
@@ -309,6 +316,10 @@ assert_common:
                         printf("comment:  0x%016lx\n", assert_comment);
                 printf("expected: 0x%016lx\n", assert_expected);
                 printf("got:      0x%016lx\n", assert_got);
+#ifdef DUMP_TAPE
+                printf("dumping tape.bin...\n");
+                dump_tape();
+#endif
                 exit(1);
         }
         pc+=16;

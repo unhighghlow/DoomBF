@@ -11,6 +11,7 @@
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
 // #define   DEBUGGER_TAPE_VIEW     8
 #define ASSERTS
+//#define   DUMP_TAPE /* Dump tape on assert */
 #define CELL_FORMAT_STRING "%2x"
 
 /* Advanced optimization options */

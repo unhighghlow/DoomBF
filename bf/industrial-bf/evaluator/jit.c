@@ -2,10 +2,9 @@ static jit_state_t *_jit;
 
 typedef int (*pifi)(uint8_t*);
 
-static uint64_t assert_loc_base;
 void assert(uint8_t kind, uint64_t exp, uint64_t got, uint64_t com) {
         if (kind == 0)
-                got -= assert_loc_base;
+                got -= (uint64_t)tape;
         if (exp == got) return;
 
         char *assert_name = "?";
@@ -20,10 +19,14 @@ void assert(uint8_t kind, uint64_t exp, uint64_t got, uint64_t com) {
                 printf("comment:  0x%016lx\n", com);
         printf("expected: 0x%016lx\n", exp);
         printf("got:      0x%016lx\n", got);
+#ifdef DUMP_TAPE
+        printf("dumping tape.bin...\n");
+        dump_tape();
+#endif
         exit(1);
 }
 
-void jit_run(uint8_t program[], CELL tape[]) {
+void jit_run(uint8_t program[]) {
         jit_node_t  *tape_in;
         pifi         run;
         uint64_t     pc = 0;
@@ -41,7 +44,6 @@ void jit_run(uint8_t program[], CELL tape[]) {
         _jit = jit_new_state();
 
         inst = program;
-        assert_loc_base = (uint64_t)tape;
 
         jit_prolog();
         tape_in = jit_arg();
