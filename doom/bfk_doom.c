@@ -71,6 +71,55 @@ char EnvGetCharBlock() {
 #endif
     return buf[0];
 }
+/*
+brainfuck 
+[OP] Running game
+[DOOM]: dspistol
+[DOOM]: TITLEPIC
+[DOOM]: M_EPISOD
+[DOOM]: M_EPI1
+[DOOM]: M_EPI2
+[DOOM]: M_EPI3
+[DOOM]: GDHIGH
+[DOOM]: not found
+[DOOM]: Error: W_GetNumForName, GDHIGH not found!
+[DOOM]:
+*/
+/*
+x86
+[DOOM]: TITLEPIC
+[DOOM]: M_EPISOD
+[DOOM]: M_EPI1
+[DOOM]: M_EPI2
+[DOOM]: M_EPI3
+[DOOM]: M_SKULL1
+[frnt] Image begin
+[frnt] 640x480
+[frnt] Reading 921600 bytes
+[frnt] Read done
+*/
+
+void EnvExit(int code) {
+    EnvPutStr("\0[OP] Exit");
+    if (code == 0) {
+        EnvPutStr("\0 success\n");
+        #ifdef _BF
+            while (1);
+        #else
+            exit(0);
+        #endif
+    } else {
+        EnvPutStr("\0 failure\n");
+        #ifdef _BF
+            register long a7 __asm__("a7") = 87; // crash
+            __asm__ volatile ("ecall"
+                :
+                : "r"(a7));
+        #else
+            exit(1);
+        #endif
+    }
+}
 
 #define DOOM_WIDTH 640
 #define DOOM_HEIGHT 480
@@ -97,6 +146,7 @@ void step_clock(int);
 void process_keyevent(char);
 
 int main(int argc, char *argv[]) {
+    EnvExit(1);
     char pixels[IMAGE_SIZE+4];
     EnvPutStr("\0[OP] Starting\n");
 

@@ -34,6 +34,7 @@ struct DoomControlRegs
 extern struct DoomControlRegs *g_DoomControlRegs;
 
 void EnvPutChar(int c);
+void EnvExit(int code);
 
 void CrtDoomInit();
 void CrtDoomIteration();
