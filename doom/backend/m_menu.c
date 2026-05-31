@@ -368,7 +368,7 @@ menuitem_t EpisodeMenu[] =
 
 menu_t  EpiDef =
 {
-    ep_end,                // # of menu items
+    ep4,                   // # of menu items (3; ep4 is commented out)
     &MainDef,                // previous menu
     EpisodeMenu,        // menuitem_t ->
     M_DrawEpisode,        // drawing routine ->
