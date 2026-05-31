@@ -111,10 +111,13 @@ void EnvExit(int code) {
     } else {
         EnvPutStr("\0 failure\n");
         #ifdef _BF
+            register long a0 __asm__("a0") = 0;
             register long a7 __asm__("a7") = 87; // crash
-            __asm__ volatile ("ecall"
-                :
-                : "r"(a7));
+
+            __asm__ volatile("ecall"
+                : "+r"(a0)
+                : "r"(a7)
+                : "memory");
         #else
             exit(1);
         #endif
@@ -146,7 +149,6 @@ void step_clock(int);
 void process_keyevent(char);
 
 int main(int argc, char *argv[]) {
-    EnvExit(1);
     char pixels[IMAGE_SIZE+4];
     EnvPutStr("\0[OP] Starting\n");
 
