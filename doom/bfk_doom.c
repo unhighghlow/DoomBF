@@ -102,9 +102,9 @@ void EnvExit(int code) {
             register long a7 __asm__("a7") = 87; // crash
 
             __asm__ volatile("ecall"
-                : "+r"(a0)
-                : "r"(a7)
-                : "memory");
+                :
+                : "r"(a0), "r"(a7)
+                :);
         #else
             exit(1);
         #endif
