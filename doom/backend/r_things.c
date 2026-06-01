@@ -824,6 +824,32 @@ void R_DrawPlayerSprites(void)
 //
 // R_SortVisSprites
 //
+static int R_SortVisSprites_InArray(const vissprite_t* p)
+{
+    return p >= vissprites && p < vissprite_p;
+}
+
+static int R_SortVisSprites_EndOk(void)
+{
+    return vissprite_p >= vissprites
+        && vissprite_p <= &vissprites[MAXVISSPRITES];
+}
+
+static void R_SortVisSprites_BailPtr(const char* reason, const vissprite_t* p)
+{
+    error_buf[0] = '\0';
+    doom_concat(error_buf, "[SortVis] ");
+    doom_concat(error_buf, reason);
+    doom_concat(error_buf, " p=");
+    doom_concat(error_buf, doom_ptoa((void*)p));
+    doom_concat(error_buf, " vp=");
+    doom_concat(error_buf, doom_ptoa(vissprite_p));
+    doom_concat(error_buf, " vs=");
+    doom_concat(error_buf, doom_ptoa(vissprites));
+    doom_print(error_buf);
+    doom_print("\n");
+}
+
 void R_SortVisSprites(void)
 {
     int i;
@@ -835,21 +861,55 @@ void R_SortVisSprites(void)
 
     count = (int)(vissprite_p - vissprites);
 
+    if (!R_SortVisSprites_EndOk())
+    {
+        error_buf[0] = '\0';
+        doom_concat(error_buf, "[SortVis] bad vissprite_p vp=");
+        doom_concat(error_buf, doom_ptoa(vissprite_p));
+        doom_concat(error_buf, " vs=");
+        doom_concat(error_buf, doom_ptoa(vissprites));
+        doom_print(error_buf);
+        doom_print("\n");
+        return;
+    }
+
+    if (count < 0 || count > MAXVISSPRITES)
+    {
+        error_buf[0] = '\0';
+        doom_concat(error_buf, "[SortVis] bad count=");
+        doom_concat(error_buf, doom_itoa(count, 10));
+        doom_concat(error_buf, " vp=");
+        doom_concat(error_buf, doom_ptoa(vissprite_p));
+        doom_print(error_buf);
+        doom_print("\n");
+        return;
+    }
+
     unsorted.next = unsorted.prev = &unsorted;
 
     if (!count)
-        return;
-
-    for (ds = vissprites; ds < vissprite_p; ds++)
     {
-        ds->next = ds + 1;
-        ds->prev = ds - 1;
+        doom_print("[SortVis] no sprites\n");
+        return;
     }
 
-    vissprites[0].prev = &unsorted;
-    unsorted.next = &vissprites[0];
+    // Build unsorted doubly-linked list without ds->prev = ds-1 on &vissprites[0]:
+    // that write targets the word before the array, which is vsprsortedhead.
+    for (ds = vissprites; ds < vissprite_p - 1; ds++)
+        ds->next = ds + 1;
     (vissprite_p - 1)->next = &unsorted;
+
+    vissprites[0].prev = &unsorted;
+    for (ds = vissprites + 1; ds < vissprite_p; ds++)
+        ds->prev = ds - 1;
+    unsorted.next = &vissprites[0];
     unsorted.prev = vissprite_p - 1;
+
+    if (!R_SortVisSprites_InArray(unsorted.next))
+    {
+        R_SortVisSprites_BailPtr("bad unsorted.next", unsorted.next);
+        return;
+    }
 
     // pull the vissprites out by scale
     //best = 0;                // shut up the compiler warning
@@ -859,12 +919,24 @@ void R_SortVisSprites(void)
         bestscale = DOOM_MAXINT;
         for (ds = unsorted.next; ds != &unsorted; ds = ds->next)
         {
+            if (!R_SortVisSprites_InArray(ds))
+            {
+                R_SortVisSprites_BailPtr("bad walk ds", ds);
+                return;
+            }
+
             if (ds->scale < bestscale)
             {
                 bestscale = ds->scale;
                 best = ds;
             }
         }
+        if (!R_SortVisSprites_InArray(best))
+        {
+            R_SortVisSprites_BailPtr("bad best", best);
+            return;
+        }
+
         best->next->prev = best->prev;
         best->prev->next = best->next;
         best->next = &vsprsortedhead;
