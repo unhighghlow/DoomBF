@@ -1,10 +1,9 @@
-doom.b: bf-tcc doom
-	BFCC=$(abspath bf-tcc) $(MAKE) -C doom $@
-	cp doom/$@ .
-
-all: lnx_doom fake_bfk_doom bfk_doom.elf ibf hackablebf doom.b
+all: ibf frnt doom.bpk
 
 .PHONY: all
+
+doom.bpk: bfk_doom.elf
+	python3 ./RISC-BF/asm.py -c bfk_doom.elf doom.bpk
 
 lnx_doom: doom
 	$(MAKE) -C $^ $@
@@ -29,3 +28,4 @@ hackablebf: bf/hackablebf
 frnt: frontend
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
+
