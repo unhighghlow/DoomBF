@@ -59,7 +59,7 @@ $ pip install -r RISC-BF/requirements.txt
 
 Компиляция Doom из risc-v в сжатый brainfuck
 ```bash
-$ python ./RISC-BF/asm.py -c bfk_doom.elf doom.bpk
+$ python ./RISC-BF/risc_bf.py -c bfk_doom.elf doom.bpk
 ```
 
 Запуск Doom на brainfuck с фронтендом
