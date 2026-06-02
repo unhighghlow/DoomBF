@@ -16,6 +16,7 @@ ibf
 
 doom/lnx_doom
 doom/fake_bfk_doom
+doom/doom_wad.h
 
 bf/hackablebf/hackablebf
 bf/hackablebf/hackablebf-test
@@ -30,6 +31,8 @@ hackablebf
 bf-tcc
 frnt
 pipe
+doom.bpk
+doom.bpk.addr
 .idea
 doom.bpk
 doom.bpk.addr

@@ -1,5 +1,10 @@
 # DoomBF
 
+> Кто может запрограммировать что-то полезное на нём? :) \
+> &mdash; Урбан Мюллер, 1993
+
+---
+
 На связи
 [Мастерская системного программирования ИТМО](https://t.me/itmosysint)
 
@@ -36,7 +41,7 @@ Doom запускается за несколько минут и выдает �
 Требуется:
 - Make
 - riscv32-elf-gcc / riscv32-unknown-elf-gcc / riscv64-elf-gcc / riscv64-unknown-elf-gcc
-- Python
+- Python (capstone и pyelftools)
 - X11 SDK
 
 ### Для Linux
@@ -47,47 +52,39 @@ $ sudo apt-get update
 $ sudo apt-get install libx11-dev
 ```
 
-Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v
+Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v gcc
 
-Далее надо собрать компоненты:
+Далее надо собрать дум:
 ```bash
-$ IBF_JIT=1 make ibf
-$ make bfk_doom.elf
-$ make frnt
-$ pip install -r RISC-BF/requirements.txt
-```
-
-Компиляция Doom из risc-v в сжатый brainfuck
-```bash
-$ python ./RISC-BF/risc_bf.py -c bfk_doom.elf doom.bpk
+make
 ```
 
 Запуск Doom на brainfuck с фронтендом
 ```bash
-$ mkfifo pipe
-$ ./ibf -ac doom.bpk < pipe | ./frnt > pipe
+mkfifo pipe
+./ibf -ac doom.bpk < pipe | ./frnt > pipe
 ```
 
 ### Дополнительно
 
 Запуск Doom в Linux (не на брейнфаке):
 ```bash
-$ make lnx_doom
-$ cd doom/data
-$ ../lnx_doom
+make lnx_doom
+cd doom/data
+../lnx_doom
 ```
 
 Запуск Doom через фронтенд (но не на брейнфаке):
 ```bash
-$ make fake_bfk_doom
-$ mkfifo pipe
-$ ./fake_bfk_doom < pipe | ./frnt > pipe
+make fake_bfk_doom
+mkfifo pipe
+./fake_bfk_doom < pipe | ./frnt > pipe
 ```
 
 Запуск тестов BF в Linux:
 ```bash
-$ cd test
-$ ./bench.sh
+cd bf/industrial-bf
+make test
 ```
 
 ## Как поучаствовать
