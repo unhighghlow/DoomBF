@@ -1,5 +1,9 @@
 # DoomBF
 
+> Who can program anything useful with it? :)
+
+-- Урбан Мюллер, 1993
+
 На связи
 [Мастерская системного программирования ИТМО](https://t.me/itmosysint)
 
@@ -64,22 +68,22 @@ mkfifo pipe
 
 Запуск Doom в Linux (не на брейнфаке):
 ```bash
-$ make lnx_doom
-$ cd doom/data
-$ ../lnx_doom
+make lnx_doom
+cd doom/data
+../lnx_doom
 ```
 
 Запуск Doom через фронтенд (но не на брейнфаке):
 ```bash
-$ make fake_bfk_doom
-$ mkfifo pipe
-$ ./fake_bfk_doom < pipe | ./frnt > pipe
+make fake_bfk_doom
+mkfifo pipe
+./fake_bfk_doom < pipe | ./frnt > pipe
 ```
 
 Запуск тестов BF в Linux:
 ```bash
-$ cd test
-$ ./bench.sh
+cd bf/industrial-bf
+make test
 ```
 
 ## Как поучаствовать
