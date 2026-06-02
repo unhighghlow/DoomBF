@@ -51,7 +51,7 @@ $ sudo apt-get install libx11-dev
 
 Далее надо собрать компоненты:
 ```bash
-$ make ibf
+$ IBF_JIT=1 make ibf
 $ make bfk_doom.elf
 $ make frnt
 $ pip install -r RISC-BF/requirements.txt
