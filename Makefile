@@ -3,7 +3,7 @@ all: ibf frnt doom.bpk
 .PHONY: all
 
 doom.bpk: bfk_doom.elf
-	python3 ./RISC-BF/asm.py -c bfk_doom.elf doom.bpk
+	python3 RISC-BF/risc_bf.py -c bfk_doom.elf doom.bpk
 
 lnx_doom: doom
 	$(MAKE) -C $^ $@

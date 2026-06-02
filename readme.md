@@ -56,7 +56,7 @@ $ sudo apt-get install libx11-dev
 
 Далее надо собрать дум:
 ```bash
-make
+IBF_JIT=1 make
 ```
 
 Запуск Doom на brainfuck с фронтендом
