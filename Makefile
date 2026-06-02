@@ -17,11 +17,7 @@ bfk_doom.elf: doom
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
 
-ibf: bf/industrial-bf
-	$(MAKE) -C $^ $@
-	cp $^/$@ .
-
-hackablebf: bf/hackablebf
+ibf: industrial-bf
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
 

@@ -3,7 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-TEST_DIR="$(realpath ../../b/tests)"
+TEST_DIR="$(realpath ../b/tests)"
 IBF="$(realpath ./ibf)"
 
 if [[ ! -z ${BF:-} ]]; then

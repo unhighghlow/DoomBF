@@ -83,7 +83,7 @@ mkfifo pipe
 
 Запуск тестов BF в Linux:
 ```bash
-cd bf/industrial-bf
+cd industrial-bf
 make test
 ```
 
