@@ -1,6 +1,11 @@
 all: ibf frnt doom.bpk
 
-.PHONY: all
+run: all
+	rm .pipe || true
+	mkfifo .pipe
+	./ibf -c doom.bpk < .pipe | ./frnt > .pipe
+
+.PHONY: all run
 
 doom.bpk: bfk_doom.elf
 	python3 RISC-BF/risc_bf.py -c bfk_doom.elf doom.bpk
