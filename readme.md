@@ -55,6 +55,8 @@ sudo apt-get update
 sudo apt-get install libx11-dev
 ```
 
+Для установки GNU lightning см. [инструкцию](https://www.gnu.org/software/lightning/manual/html_node/Installation.html)
+
 Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v gcc
 
 ```bash
