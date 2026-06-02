@@ -2,7 +2,7 @@ doom.b: bf-tcc doom
 	BFCC=$(abspath bf-tcc) $(MAKE) -C doom $@
 	cp doom/$@ .
 
-all: lnx_doom ibf hackablebf bf-tcc doom.b
+all: lnx_doom fake_bfk_doom bfk_doom.elf ibf hackablebf doom.b
 
 .PHONY: all
 
@@ -23,10 +23,6 @@ ibf: bf/industrial-bf
 	cp $^/$@ .
 
 hackablebf: bf/hackablebf
-	$(MAKE) -C $^ $@
-	cp $^/$@ .
-
-bf-tcc: tcc
 	$(MAKE) -C $^ $@
 	cp $^/$@ .
 
