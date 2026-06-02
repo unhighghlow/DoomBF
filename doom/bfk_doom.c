@@ -2,6 +2,7 @@
 #  define _GNU_SOURCE
 #  include <sys/mman.h>
 #  include <time.h>
+#  include <stdlib.h>
 #endif
 
 #include <stddef.h>
