@@ -42,27 +42,24 @@ Doom запускается за несколько минут и выдает �
 - Make
 - riscv32-elf-gcc / riscv32-unknown-elf-gcc / riscv64-elf-gcc / riscv64-unknown-elf-gcc
 - Python (capstone и pyelftools)
-- X11 SDK
+- X11Lib
+- GNU Lightning
 
 ### Для Linux
 
-Предварительно надо установить X11 SDK. Для Debian/ubuntu:
+*Рекомендуем использовать [`nix-shell`](https://nixos.org/download)*
+
+Предварительно надо установить библиотеки. Для Debian/ubuntu:
 ```bash
-$ sudo apt-get update
-$ sudo apt-get install libx11-dev
+sudo apt-get update
+sudo apt-get install libx11-dev
 ```
 
 Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v gcc
 
-Далее надо собрать дум:
 ```bash
-IBF_JIT=1 make
-```
-
-Запуск Doom на brainfuck с фронтендом
-```bash
-mkfifo pipe
-./ibf -ac doom.bpk < pipe | ./frnt > pipe
+make
+make run
 ```
 
 ### Дополнительно

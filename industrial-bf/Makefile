@@ -1,13 +1,18 @@
+has_macro = $(shell $(CC) -E -dD -x c evaluator/config.h 2>/dev/null | grep -E '^\\#define[[:space:]]+$(1)\b' >/dev/null && echo yes || echo no)
+
 EXTRA := 
-ifneq ($(origin IBF_AVX2),undefined)
+ifneq ($(call has_macro,FAST_ROL),yes)
 	EXTRA += -mavx2
 endif
 
-ifneq ($(origin IBF_JIT),undefined)
+ifneq ($(call has_macro,JIT),yes)
 	EXTRA += -llightning
 endif
 
-ibf: evaluator/
+evaluator/config.h:
+	cp evaluator/config{.def,}.h
+
+ibf: evaluator/ evaluator/config.h
 	${CC} evaluator/main.c -g ${EXTRA} -O3 -o ibf ${CCFLAGS}
 
 bld: loader/
