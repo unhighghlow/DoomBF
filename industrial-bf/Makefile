@@ -10,7 +10,7 @@ ifneq ($(call has_macro,JIT),yes)
 endif
 
 evaluator/config.h:
-	cp evaluator/config{.def,}.h
+	cp evaluator/config.def.h evaluator/config.h
 
 ibf: evaluator/ evaluator/config.h
 	${CC} evaluator/main.c -g ${EXTRA} -O3 -o ibf ${CCFLAGS}
