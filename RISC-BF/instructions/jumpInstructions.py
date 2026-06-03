@@ -118,8 +118,8 @@ class AddUpperImmToPC(Instruction):
         id_num += id_list[1] * 256
         id_num += id_list[2] * (256 ** 2)
         id_num += id_list[3] * (256 ** 3)
-        id_num += self.value
-        print(f"{id_num:x}")
+        id_num += self.value * (2 ** 12)
+        id_num %= 2 ** 32
         LoadI(self.dst, id_num).evaluate(program, cur_block)
 
 
