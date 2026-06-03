@@ -26,6 +26,14 @@ void EnvPutChar(int c) {
     fflush(stdout);
 }
 
+void EnvExit(int code) {
+    if (code == 0) {
+        exit(0);
+    } else {
+        exit(1);
+    }
+}
+
 static void LinuxDoomUpdateTime(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);

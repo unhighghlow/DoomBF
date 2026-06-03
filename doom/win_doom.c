@@ -16,6 +16,14 @@ void EnvPutChar(int c)
     printf("%c", c);
 }
 
+void EnvExit(int code) {
+    if (code == 0) {
+        exit(0);
+    } else {
+        exit(1);
+    }
+}
+
 void WinDoomUpdateTime()
 {
     ULONGLONG time64 = GetTickCount();
