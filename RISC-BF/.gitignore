@@ -1,0 +1,15 @@
+__pycache__
+.mypy_cache
+bin
+dst
+tmp
+out.b
+out.b.addr
+out.bpk
+out.bpk.addr
+doom.bpk
+doom.bpk.addr
+ibf
+frnt
+tests/test.c
+tests/t.s

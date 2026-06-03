@@ -1,5 +1,10 @@
 # DoomBF
 
+> Кто может запрограммировать что-то полезное на нём? :) \
+> &mdash; Урбан Мюллер, 1993
+
+---
+
 На связи
 [Мастерская системного программирования ИТМО](https://t.me/itmosysint)
 
@@ -13,69 +18,73 @@
 Проект является совместным творчеством группы энтузиастов в рамках студенческого сообщества ФБИТ ИТМО.
 
 ## Статус проекта
-Прототипирование активно идёт: уже есть рабочие заготовки, среда для Windows и первые результаты.
+Doom успешно компилируется и запускается в brainfuck
 
-## Что уже сделано
-1. **Оснастка для Windows:** система сборки, скрипты и утилиты — собирается и тестируется.
-2. Взят оригинальный код Doom и добавлена С‑обвязка **CrtDoom**, которая сводит API к двум функциям (см. `doom_env.h`).
-3. Реализация внешней среды для CrtDoom под Windows — `win_doom.c` — **работает**.
-4. Заготовки реализаций среды для Linux (`lnx_doom.c`) и macOS (`mac_doom.m`) — пока **не подключены** к скриптам сборки.
-5. Добавлен оригинальный код **tcc**; сейчас он используется для сборки Doom‑кода (без модификаций).
-6. Написаны **два** интерпретатора Brainfuck на C; ведётся серьёзная работа по оптимизациям.
-7. Подготовлен ряд примеров на Brainfuck — в папке `b` (спасибо за развитие примеров и добавление варианта `JMP`).
+## Что было сделано
+1. Взят оригинальный код Doom и добавлена С‑обвязка **CrtDoom**, которая сводит API к двум функциям (см. `doom/crt/doom_env.h`).
+2. Написаны **два** оптимизированных интерпретатора Brainfuck на C для запуска Doom (см. папку `bf`)
+3. Подготовлен ряд примеров на Brainfuck — в папке `b` (спасибо за развитие примеров и добавление варианта `JMP`)
+4. Написан скрипт для сборки Doom на архитектуре risc-v, работает только на linux (`make bfk_doom.elf`)
+5. Создан компилятор из risc-v в brainfuck (см. папку `RISC-BF`)
+6. Реализован фронтенд для отображения игры doom (см. папку `frontend`)
 
 
 ## Актуальные задачи (Roadmap)
-- [ ] Исправить структуру проекта: добавить каталоги `frontend/`, `crt/`, `tests/`.
-- [ ] Починить скрипты/сборку для поддержки **Linux**‑среды.
-- [ ] Починить скрипты/сборку для поддержки **macOS**‑среды.
-- [ ] Добавить новую платформу в **tcc** для генерации `.b`‑кода.
-- [ ] Расширить примеры и тесты BF в папке `b/`: математика, битовые операции, стек, `call`/`jmp`, и др.
-- [ ] Добавить soft‑float реализацию на C (поддержка `float`) и интегрировать в **tcc** *(предварительно)*.
+- [ ] Добавить возможность компилировать Doom в brainfuck на windows и macOS
 - [ ] Продолжить работу над BF‑интерпретаторами (оптимизации на усмотрение авторов).
+- [ ] Сделать, чтобы make автоматически выбирал доступный risc-v
+
+## Производительность
+Doom запускается за несколько минут и выдает примерно один кадр в 40 секунд
 
 ## Быстрый старт
 Требуется:
-- [CMake](https://cmake.org/)
-- Компилятор из Visual Studio (или совместимый) — **только** для сборки `tcc`.
+- Make
+- riscv32-elf-gcc / riscv32-unknown-elf-gcc / riscv64-elf-gcc / riscv64-unknown-elf-gcc
+- Python (capstone и pyelftools)
+- X11Lib
+- GNU Lightning
 
-### Для Windows
-
-Сборка и запуск:
-```bat
-> build.cmd
-> cd bin
-> mini_doom.exe
-```
-Запуск тестов BF:
-```bat
-> cd test
-> bench.cmd
-```
 ### Для Linux
 
-Предварительно надо установить X11 SDK. Для Debian/ubuntu:
+*Рекомендуем использовать [`nix-shell`](https://nixos.org/download)*
+
+Предварительно надо установить библиотеки. Для Debian/ubuntu:
 ```bash
-$ sudo apt-get update
-$ sudo apt-get install libx11-dev
+sudo apt-get update
+sudo apt-get install libx11-dev
 ```
 
-Далее для сборки в Linux:
+Для установки GNU lightning см. [инструкцию](https://www.gnu.org/software/lightning/manual/html_node/Installation.html)
+
+Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v gcc
+
 ```bash
-$ ./build.sh
-$ cd bin
-$ ./mini_doom
+make
+make run
+```
+
+### Дополнительно
+
+Запуск Doom в Linux (не на брейнфаке):
+```bash
+make lnx_doom
+cd doom/data
+../lnx_doom
+```
+
+Запуск Doom через фронтенд (но не на брейнфаке):
+```bash
+make fake_bfk_doom
+mkfifo pipe
+./fake_bfk_doom < pipe | ./frnt > pipe
 ```
 
 Запуск тестов BF в Linux:
 ```bash
-$ cd test
-$ ./bench.sh
+cd industrial-bf
+make test
 ```
-
-## Планы по кроссплатформенности
-Цель — поддержка Windows / Linux / macOS.
-Linux и macOS в стадии интеграции окружений (`lnx_doom.c`, `mac_doom.m`) и допила скриптов.
 
 ## Как поучаствовать
 Присоединяйтесь к обсуждению и обратной связи: https://t.me/itmosysint
@@ -107,8 +116,5 @@ Linux и macOS в стадии интеграции окружений (`lnx_doo
 - https://github.com/aidantambling/Fuse-Wad-Explorer
 - https://people.math.sc.edu/Burkardt/c_src/paranoia/paranoia.html
 - https://web.archive.org/web/20260312041643/http://www.jhauser.us/arithmetic/SoftFloat-3/doc/SoftFloat.html
-
-## Лицензия
-Код публичный: использовать/скачивать/модифицировать — свободно. (При необходимости добавим отдельный `LICENSE`.)
 
 ![DoomBF banner](./data/banner_v2.jpg)

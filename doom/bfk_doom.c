@@ -2,10 +2,12 @@
 #  define _GNU_SOURCE
 #  include <sys/mman.h>
 #  include <time.h>
+#  include <stdlib.h>
 #endif
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "crt/doom_env.h"
@@ -21,7 +23,7 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-void EnvWrite(char *s, uint16_t length) {
+static inline void EnvWrite(char *s, uint16_t length) {
     #ifdef _BF
         register long a0 __asm__("a0") = 1; // stdout
         register const char *a1 __asm__("a1") = s;
@@ -32,28 +34,12 @@ void EnvWrite(char *s, uint16_t length) {
             : "r"(a1), "r"(a2), "r"(a7)
             : "memory");
     #else
-        for (int i = 0; i < length; i++) {
-            putc(s[i], stdout);
-        }
-        fflush(stdout);
+        write(STDOUT_FILENO, s, length);
     #endif
 }
 
 void EnvPutChar(int c) {
     EnvWrite((char *)&c, 1);
-}
-
-void EnvPutStr(char *s) {
-    #ifdef _BF
-        register const char *a1 __asm__("a1") = s;
-        register long a7 __asm__("a7") = 86; // write_fast
-        __asm__ volatile ("ecall"
-            :
-            : "r"(a1), "r"(a7)
-            : "memory");
-    #else
-        printf("%s", s+1);
-    #endif
 }
 
 char EnvGetCharBlock() {
@@ -72,6 +58,58 @@ char EnvGetCharBlock() {
     read(STDIN_FILENO, buf, 1);
 #endif
     return buf[0];
+}
+/*
+brainfuck 
+[OP] Running game
+[DOOM]: dspistol
+[DOOM]: TITLEPIC
+[DOOM]: M_EPISOD
+[DOOM]: M_EPI1
+[DOOM]: M_EPI2
+[DOOM]: M_EPI3
+[DOOM]: GDHIGH
+[DOOM]: not found
+[DOOM]: Error: W_GetNumForName, GDHIGH not found!
+[DOOM]:
+*/
+/*
+x86
+[DOOM]: TITLEPIC
+[DOOM]: M_EPISOD
+[DOOM]: M_EPI1
+[DOOM]: M_EPI2
+[DOOM]: M_EPI3
+[DOOM]: M_SKULL1
+[frnt] Image begin
+[frnt] 640x480
+[frnt] Reading 921600 bytes
+[frnt] Read done
+*/
+
+void EnvExit(int code) {
+    EnvWrite("[OP] Exit", 9);
+    if (code == 0) {
+        EnvWrite(" success\n", 9);
+        #ifdef _BF
+            while (1);
+        #else
+            exit(0);
+        #endif
+    } else {
+        EnvWrite(" failure\n", 9);
+        #ifdef _BF
+            register long a0 __asm__("a0") = 0;
+            register long a7 __asm__("a7") = 87; // crash
+
+            __asm__ volatile("ecall"
+                :
+                : "r"(a0), "r"(a7)
+                :);
+        #else
+            exit(1);
+        #endif
+    }
 }
 
 #define DOOM_WIDTH 640
@@ -98,9 +136,37 @@ void output_image(unsigned char*);
 void step_clock(int);
 void process_keyevent(char);
 
+static void print_num(unsigned long num) {
+#ifdef _BF
+    char buf[10];
+    int i = 1;
+    buf[0] = 0;
+
+    if (num < 0) {
+        EnvPutChar('-');
+        num = -num;
+    }
+    if (num == 0) {
+        EnvPutChar('0');
+        EnvPutChar('\n');
+        return;
+    }
+    while (num > 0) {
+        buf[i++] = '0' + (char) (num % 10);
+        num /= 10;
+    }
+    while (i > 0) {
+        i--;
+        EnvPutChar(buf[i]);
+    }
+#else
+    printf("%ul\n", num);
+#endif
+}
+
 int main(int argc, char *argv[]) {
     char pixels[IMAGE_SIZE+4];
-    EnvPutStr("\0[OP] Starting\n");
+    EnvWrite("[OP] Starting\n", 14);
 
     g_DoomWadAddress = data_doom_wad;
     g_DoomWadSize = data_doom_wad_len;
@@ -131,16 +197,15 @@ int main(int argc, char *argv[]) {
 
     CrtDoomInit();
     output_image(pixels);
-    output_image(pixels);
 
-    char ev;
+    unsigned char ev;
     while (1) {
-        EnvPutStr("\0[OP] Getting events\n");
+        EnvWrite("[OP] Getting events\n", 20);
         while (1) {
             ev = EnvGetCharBlock();
             if (!ev) break;
             process_keyevent(ev);
-            EnvPutStr("\0[OP] Event: ");
+            EnvWrite("[OP] Event: ", 12);
             EnvPutChar('0'+(ev>>8));
             EnvPutChar('0'+(ev&0xf));
             EnvPutChar('\n');
@@ -148,11 +213,11 @@ int main(int argc, char *argv[]) {
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
-        EnvPutStr("\0[OP] Running game\n");
+        EnvWrite("[OP] Running game\n", 18);
         CrtDoomIteration();
         output_image(pixels);
 #ifndef _BF
-        usleep(10000);
+        //usleep(1000);
 #endif
         step_clock(20000);
     }
@@ -170,7 +235,7 @@ void step_clock(int step_us) {
 }
 
 void output_image(unsigned char *pixels) {
-    EnvPutStr("\0[OP] Start image output\n");
+    EnvWrite("[OP] Start image output\n", 24);
 
     EnvPutChar(0);
     EnvPutChar(DOOM_WIDTH >> 8);
@@ -184,7 +249,7 @@ void output_image(unsigned char *pixels) {
 
     EnvPutChar('\n');
 
-    EnvPutStr("\0[OP] End image output\n\n");
+    EnvWrite("[OP] End image output\n\n", 23);
 }
 
 void process_keyevent(char event) {

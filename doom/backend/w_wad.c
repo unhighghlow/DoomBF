@@ -388,6 +388,7 @@ int W_GetNumForName(char* name)
     int i;
 
     i = W_CheckNumForName(name);
+    doom_print(name);
 
     if (i == -1)
     {
@@ -398,6 +399,7 @@ int W_GetNumForName(char* name)
         }
         if (i == -1)
         {
+            doom_print("not found");
             //I_Error("Error: W_GetNumForName, %s not found!", name);
             doom_strcpy(error_buf, "Error: W_GetNumForName, ");
             doom_concat(error_buf, name);

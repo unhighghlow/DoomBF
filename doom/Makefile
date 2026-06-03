@@ -46,7 +46,7 @@ lnx_doom: lnx_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
 
 bfk_doom.o: doom_wad.h
 
-bfk_doom.elf: bfk_doom.c $(DOOM_SOURCES) $(CRT_SOURCES)
+bfk_doom.elf: bfk_doom.c doom_wad.h $(DOOM_SOURCES) $(CRT_SOURCES)
 	riscv32-none-elf-gcc \
 	    -O3 \
 	    -march=rv32i \

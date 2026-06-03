@@ -95,6 +95,7 @@ void MiniDoomPrint(const char* String)
 void MiniDoomExit(int code)
 {
     printf("[DOOM]: Exiting with code %d\n", code);
+    EnvExit(code);
     while (1);
     //Running = FALSE;
 }

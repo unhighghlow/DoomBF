@@ -59,8 +59,10 @@ int main(int argc, char *argv[]) {
         int new_height;
         char *cur_buf = 0;
         char *cur_temp_buf = 0;
-        char key_queue[10];
-        memset(key_queue, 0, 10);
+        signed char cur_pressed[10]; /* 0 - not pressed; 1 - pressed for a frame; 2 - held down */
+        signed char new_pressed[10];
+        memset(cur_pressed, 0, 10);
+        memset(new_pressed, 0, 10);
 
         // X11 init
         Display *dpy = XOpenDisplay(NULL);
@@ -153,14 +155,10 @@ int main(int argc, char *argv[]) {
 
                 XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
                 XFlush(dpy);
+                XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
+                XFlush(dpy);
 
-                for (int i = 0; i < 10; i++) {
-                    if (key_queue[i]) {
-                        send_keyaction(i, 2);
-                        key_queue[i] = 0;
-                    }
-                }
-
+                memset(new_pressed, 0, 10);
                 while (XPending(dpy)) {
                     XEvent ev;
                     int kv;
@@ -174,21 +172,41 @@ int main(int argc, char *argv[]) {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
                             if (ks == XK_q) { running = 0; }
                             kv = parse_key(ks);
-                            send_keyaction(kv, 1);
-                            key_queue[kv] = 1;
+                            new_pressed[kv] = 2;
                         } break;
                         case KeyRelease: {
                             KeySym ks = XLookupKeysym(&ev.xkey, 0);
                             kv = parse_key(ks);
-                            if (key_queue[kv]) {
-                                continue;
+                            if (new_pressed[kv] && !cur_pressed[kv]) {
+                                    new_pressed[kv] = 1;
+                            } else {
+                                    new_pressed[kv] = -1;
                             }
-                            send_keyaction(kv, 2);
                         } break;
                         case ClientMessage:
                         default:
                             break;
                     }
+                }
+
+                for (int i = 0; i < 10; i++) {
+                        if (!cur_pressed[i] && new_pressed[i] > 0) {
+                                cur_pressed[i] = new_pressed[i];
+                                send_keyaction(i, 1);
+                                continue;
+                        }
+                        if (cur_pressed[i] && new_pressed[i] < 0) {
+                                cur_pressed[i] = 0;
+                                fprintf(stderr, "depress\n");
+                                send_keyaction(i, 2);
+                                continue;
+                        }
+                        if (cur_pressed[i] == 1 && new_pressed[i] < 1) {
+                                cur_pressed[i] = 0;
+                                fprintf(stderr, "depress(1)\n");
+                                send_keyaction(i, 2);
+                                continue;
+                        }
                 }
                 putc(0, stdout);
                 fflush(stdout);
