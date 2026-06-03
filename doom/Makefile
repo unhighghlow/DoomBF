@@ -53,6 +53,8 @@ bfk_doom.elf: bfk_doom.c doom_wad.h $(DOOM_SOURCES) $(CRT_SOURCES)
 	    -mabi=ilp32 \
 	    -ffreestanding \
 	    -nostdlib \
+            -mcmodel=medlow \
+            -fsigned-char \
 	    -T bfk_link.ld \
 	    -std=c11 \
 	    -D_BF \
