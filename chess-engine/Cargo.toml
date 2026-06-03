@@ -18,11 +18,14 @@ categories = [
     "algorithms"
 ]
 
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
-path = "src/bin.rs"
+path = "src/bfk.rs"
 name = "chess"
 
 [[example]]
 name = "terminal"
+
+[dependencies]
+linked_list_allocator = "0.10.6"
+riscv-rt = "0.13"
