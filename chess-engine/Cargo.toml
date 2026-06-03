@@ -27,5 +27,5 @@ name = "chess"
 name = "terminal"
 
 [dependencies]
-linked_list_allocator = "0.10.6"
+talc = "5.0.3"
 riscv-rt = "0.13"

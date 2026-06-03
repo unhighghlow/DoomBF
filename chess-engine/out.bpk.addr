@@ -1,8 +1,0 @@
-a0[4] next
-a4[4] current
-a4[10] scraps
-a14[8] x1
-a1c[8] x2
-a5c[8] a0
-a114[10] mem_scraps
-a124[100] memory

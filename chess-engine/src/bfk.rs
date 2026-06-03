@@ -5,14 +5,34 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::alloc::Layout;
 use core::alloc::GlobalAlloc;
+use talc::{*, source::Claim};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
 
-use linked_list_allocator::LockedHeap;
+struct SyncAlloc {
+    inner: TalcCell<Claim>,
+}
+
+unsafe impl Send for SyncAlloc {}
+unsafe impl Sync for SyncAlloc {}
+
+unsafe impl GlobalAlloc for SyncAlloc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        self.inner.alloc(layout)
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        self.inner.dealloc(ptr, layout)
+    }
+    // implement other methods as needed
+}
+
+
 
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static TALC: SyncAlloc = SyncAlloc{inner:TalcCell::new(unsafe {
+    Claim::array(core::mem::transmute::<i32, *mut [u8; 0x4000000]>(0x4000000))
+})};
 
 
 

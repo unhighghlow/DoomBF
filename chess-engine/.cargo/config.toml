@@ -4,5 +4,5 @@ target = "riscv32i-unknown-none-elf"
 [target.riscv32i-unknown-none-elf]
 rustflags = [
     "-C", "link-arg=-Tbfk_link.ld",
-    "--cfg", "portable_atomic_unsafe_assume_single_core"
+    "-C", "code-model=small",
 ]
