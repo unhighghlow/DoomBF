@@ -4,11 +4,14 @@
 #  include <time.h>
 #  include <stdlib.h>
 #  include <stdio.h>
+#  include <stddef.h>
+#  include <stdint.h>
+#  include <unistd.h>
+#else
+#  include <stddef.h>
+#  include <stdint.h>
 #endif
 
-#include <stddef.h>
-#include <stdint.h>
-#include <unistd.h>
 
 #include "crt/doom_env.h"
 #include "doom_wad.h" /* data_doom_wad */

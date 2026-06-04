@@ -5,7 +5,15 @@ run: all
 	mkfifo .pipe
 	./ibf -c doom.bpk < .pipe | ./frnt > .pipe
 
-.PHONY: all run
+clean:
+	rm -f ./ibf ./frnt ./doom.bpk
+	$(MAKE) -C doom $@
+	$(MAKE) -C industrial-bf $@
+	$(MAKE) -C frontend $@
+
+rebuild: clean all
+
+.PHONY: all run clean rebuild
 
 doom.bpk: bfk_doom.elf
 	python3 RISC-BF/risc_bf.py -c bfk_doom.elf doom.bpk

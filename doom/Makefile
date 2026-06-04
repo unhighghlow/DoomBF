@@ -70,3 +70,6 @@ doom.b: bfk_doom.c doom_wad.h $(DOOM_SOURCES) $(CRT_SOURCES)
 
 doom_wad.h: data/doom.wad
 	xxd -i $^ doom_wad.h
+
+clean:
+	rm -f *.o ./bfk_doom.elf
