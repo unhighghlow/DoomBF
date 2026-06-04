@@ -253,7 +253,7 @@ pub trait Evaluate: Sized {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    fn get_best_next_move(&self, depth: i32) -> (Move, u64, f64) {
+    fn get_best_next_move(&self, depth: i32) -> (Move, u32, f64) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -289,7 +289,7 @@ pub trait Evaluate: Sized {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    fn get_worst_next_move(&self, depth: i32) -> (Move, u64, f64) {
+    fn get_worst_next_move(&self, depth: i32) -> (Move, u32, f64) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -330,7 +330,7 @@ pub trait Evaluate: Sized {
         mut beta: f64,
         is_maximizing: bool,
         getting_move_for: Color,
-        board_count: &mut u64,
+        board_count: &mut u32,
     ) -> f64 {
         *board_count += 1;
 
