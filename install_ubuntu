@@ -1,7 +1,9 @@
 #! /bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
 sudo apt-get update
-sudo apt-get install libx11-dev build-essential riscv64-unknown-elf-gcc python3
+sudo apt-get install libx11-dev build-essential gcc-riscv64-unknown-elf python3 python3-venv python3-pip
 
 wget https://ftp.gnu.org/gnu/lightning/lightning-2.2.3.tar.gz
 tar -xf lightning-2.2.3.tar.gz
@@ -15,3 +17,5 @@ sudo rm -rf ./lightning-2.2.3
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r RISC-BF/requirements.txt
+
+
