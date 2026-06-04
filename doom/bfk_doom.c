@@ -9,7 +9,6 @@
 #  include <unistd.h>
 #else
 #  include <stddef.h>
-#  include <stdint.h>
 #endif
 
 
@@ -26,7 +25,7 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-static inline void EnvWrite(char *s, uint16_t length) {
+static inline void EnvWrite(char *s, unsigned short length) {
     #ifdef _BF
         register long a0 __asm__("a0") = 1; // stdout
         register const char *a1 __asm__("a1") = s;
