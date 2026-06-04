@@ -206,7 +206,7 @@ pub struct Board {
 
 impl Evaluate for Board {
     #[inline]
-    fn value_for(&self, ally_color: Color) -> f64 {
+    fn value_for(&self, ally_color: Color) -> f32 {
         self.squares
             .iter()
             .map(|square| match square.get_piece() {
@@ -376,13 +376,13 @@ impl Board {
         };
 
         let white = match self.turn {
-            WHITE => your_color.repeat((your_percentage * len as f64) as usize),
-            BLACK => their_color.repeat((their_percentage * len as f64) as usize),
+            WHITE => your_color.repeat((your_percentage * len as f32) as usize),
+            BLACK => their_color.repeat((their_percentage * len as f32) as usize),
         };
 
         let black = match self.turn {
-            BLACK => your_color.repeat((your_percentage * len as f64) as usize),
-            WHITE => their_color.repeat((their_percentage * len as f64) as usize),
+            BLACK => your_color.repeat((your_percentage * len as f32) as usize),
+            WHITE => their_color.repeat((their_percentage * len as f32) as usize),
         };
 
         white + &black

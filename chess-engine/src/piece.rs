@@ -22,7 +22,7 @@ pub enum Piece {
     Pawn(Color, Position),
 }
 
-const WHITE_KING_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_KING_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
     [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
     [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
@@ -33,7 +33,7 @@ const WHITE_KING_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [2.0, 3.0, 1.0, 0.0, 0.0, 1.0, 3.0, 2.0],
 ];
 
-const BLACK_KING_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_KING_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [2.0, 3.0, 1.0, 0.0, 0.0, 1.0, 3.0, 2.0],
     [2.0, 2.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0],
     [-1.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -1.0],
@@ -44,7 +44,7 @@ const BLACK_KING_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-3.0, -4.0, -4.0, -5.0, -5.0, -4.0, -4.0, -3.0],
 ];
 
-const WHITE_QUEEN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_QUEEN_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
     [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
     [-1.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
@@ -54,7 +54,7 @@ const WHITE_QUEEN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, -1.0],
     [-1.0, -0.0, -1.0, -0.5, -0.5, -0.5, -1.0, -2.0],
 ];
-const BLACK_QUEEN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_QUEEN_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-1.0, -0.0, -1.0, -0.5, -0.5, -0.5, -1.0, -2.0],
     [-1.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, -1.0],
     [-1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, -1.0],
@@ -65,7 +65,7 @@ const BLACK_QUEEN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-2.0, -1.0, -1.0, -0.5, -0.5, -1.0, -1.0, -2.0],
 ];
 
-const WHITE_ROOK_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_ROOK_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     [0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5],
     [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
@@ -76,7 +76,7 @@ const WHITE_ROOK_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
 ];
 
-const BLACK_ROOK_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_ROOK_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0],
     [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
     [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5],
@@ -87,7 +87,7 @@ const BLACK_ROOK_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ];
 
-const WHITE_BISHOP_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_BISHOP_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
     [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0],
     [-1.0, 0.0, 0.5, 1.0, 1.0, 0.5, 0.0, -1.0],
@@ -98,7 +98,7 @@ const WHITE_BISHOP_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
 ];
 
-const BLACK_BISHOP_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_BISHOP_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
     [-1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, -1.0],
     [-1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0],
@@ -109,7 +109,7 @@ const BLACK_BISHOP_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-2.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -2.0],
 ];
 
-const WHITE_KNIGHT_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_KNIGHT_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
     [-4.0, -2.0, 0.0, 0.0, 0.0, 0.0, -2.0, -4.0],
     [-3.0, 0.0, 1.0, 1.5, 1.5, 1.0, 0.0, -3.0],
@@ -120,7 +120,7 @@ const WHITE_KNIGHT_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
 ];
 
-const BLACK_KNIGHT_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_KNIGHT_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
     [-4.0, -2.0, 0.0, 0.5, 0.5, 0.0, -2.0, -4.0],
     [-3.0, 0.5, 1.0, 1.5, 1.5, 1.0, 0.5, -3.0],
@@ -131,7 +131,7 @@ const BLACK_KNIGHT_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [-5.0, -4.0, -3.0, -3.0, -3.0, -3.0, -4.0, -5.0],
 ];
 
-const WHITE_PAWN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const WHITE_PAWN_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
     [1.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0, 1.0],
@@ -142,7 +142,7 @@ const WHITE_PAWN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
 ];
 
-const BLACK_PAWN_POSITION_WEIGHTS: [[f64; 8]; 8] = [
+const BLACK_PAWN_POSITION_WEIGHTS: [[f32; 8]; 8] = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     [0.5, 1.5, -1.0, -2.0, -2.0, 1.0, 1.5, 0.5],
     [0.5, -0.5, -1.0, 0.0, 0.0, -1.0, -0.5, 0.5],
@@ -243,7 +243,7 @@ impl Piece {
     /// Additionally, the weighted value of the piece is 10 times greater than
     /// its material value, plus or minus a weight ranging between 5.0 and -5.0.
     #[inline]
-    pub fn get_weighted_value(&self) -> f64 {
+    pub fn get_weighted_value(&self) -> f32 {
         let weights = match self {
             Self::King(c, _) => match c {
                 Color::White => WHITE_KING_POSITION_WEIGHTS,
@@ -271,7 +271,7 @@ impl Piece {
             },
         };
         weights[(7 - self.get_pos().get_row()) as usize][self.get_pos().get_col() as usize]
-            + (self.get_material_value() * 10) as f64
+            + (self.get_material_value() * 10) as f32
     }
 
     /// Get the color of a given piece.

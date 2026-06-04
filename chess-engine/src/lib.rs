@@ -232,7 +232,7 @@ pub trait Evaluate: Sized {
     /// Get the value of the board for a given color.
     /// This subtracts the opponents value, and accounts for piece positions
     /// and material value.
-    fn value_for(&self, color: Color) -> f64;
+    fn value_for(&self, color: Color) -> f32;
 
     /// Get the current player's color.
     fn get_current_player_color(&self) -> Color;
@@ -253,7 +253,7 @@ pub trait Evaluate: Sized {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    fn get_best_next_move(&self, depth: i32) -> (Move, u32, f64) {
+    fn get_best_next_move(&self, depth: i32) -> (Move, u32, f32) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -289,7 +289,7 @@ pub trait Evaluate: Sized {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    fn get_worst_next_move(&self, depth: i32) -> (Move, u32, f64) {
+    fn get_worst_next_move(&self, depth: i32) -> (Move, u32, f32) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -326,12 +326,12 @@ pub trait Evaluate: Sized {
     fn minimax(
         &self,
         depth: i32,
-        mut alpha: f64,
-        mut beta: f64,
+        mut alpha: f32,
+        mut beta: f32,
         is_maximizing: bool,
         getting_move_for: Color,
         board_count: &mut u32,
-    ) -> f64 {
+    ) -> f32 {
         *board_count += 1;
 
         if depth == 0 {

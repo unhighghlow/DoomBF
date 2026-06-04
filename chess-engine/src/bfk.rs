@@ -3,6 +3,7 @@
 
 extern crate alloc;
 use alloc::vec;
+use alloc::vec::Vec;
 use core::alloc::Layout;
 use core::alloc::GlobalAlloc;
 use talc::{*, source::Claim};
@@ -24,15 +25,35 @@ unsafe impl GlobalAlloc for SyncAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         self.inner.dealloc(ptr, layout)
     }
-    // implement other methods as needed
 }
 
+/// Куча в .bss — попадает в PT_LOAD и мапится qemu-riscv32.
+#[used]
+static mut HEAP: [u8; 0x400_000] = [0; 0x400_000];
 
+struct BfkAlloc;
+
+unsafe impl GlobalAlloc for BfkAlloc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        TALC.inner.alloc(layout)
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        TALC.inner.dealloc(ptr, layout)
+    }
+}
+
+static mut TALC: SyncAlloc = SyncAlloc {
+    inner: unsafe { TalcCell::new(Claim::new(core::ptr::null_mut(), 0)) },
+};
 
 #[global_allocator]
-static TALC: SyncAlloc = SyncAlloc{inner:TalcCell::new(unsafe {
-    Claim::array(core::mem::transmute::<i32, *mut [u8; 0x4000000]>(0x4000000))
-})};
+static ALLOC: BfkAlloc = BfkAlloc;
+
+fn init_heap() {
+    unsafe {
+        TALC.inner = TalcCell::new(Claim::array(core::ptr::addr_of_mut!(HEAP)));
+    }
+}
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -43,9 +64,6 @@ fn panic(_info: &PanicInfo) -> ! {
 
 extern crate chess_engine;
 use chess_engine::*;
-use core::{
-    convert::TryFrom
-};
 
 fn get_cpu_move(b: &Board, best: bool) -> Move {
     let (m, count, _) = if best {
@@ -56,33 +74,34 @@ fn get_cpu_move(b: &Board, best: bool) -> Move {
 
     print(b"CPU evaluated {} moves before choosing to ");
     print_number_u(count);
+    print(b"\n");
     match m {
         Move::Piece(from, to) | Move::Promotion(from, to, _) => {
             match (b.get_piece(from), b.get_piece(to)) {
                 (Some(piece), Some(takes)) => {
-                    print(b"take ");
-                    print(takes.get_name());
-                    print(b"(");
-                    print(to);
-                    print(b") with ");
-                    print(piece.get_name());
-                    print(b"(");
-                    print(from);
-                    println(b")");
+                    // print(b"take ");
+                    // print(takes.get_name());
+                    // print(b"(");
+                    // print(to);
+                    // print(b") with ");
+                    // print(piece.get_name());
+                    // print(b"(");
+                    // print(from);
+                    // println(b")");
                 },
                 (Some(piece), None) => {
-                    print(b"move {}({}) to {}({})");
-                    print(takes.get_name());
-                    print(b"(");
-                    print(from);
-                    print(b") to ");
-                    println(to);
+                    // print(b"move {}({}) to {}({})");
+                    // print(takes.get_name());
+                    // print(b"(");
+                    // print(from);
+                    // print(b") to ");
+                    // println(to);
                 }
                 _ => {
-                    print(b"move ");
-                    print(from);
-                    print(b" ");
-                    println(to);
+                    // print(b"move ");
+                    // print(from);
+                    // print(b" ");
+                    // println(to);
                 },
             }
         }
@@ -98,64 +117,66 @@ fn get_cpu_move(b: &Board, best: bool) -> Move {
     m
 }
 
+#[no_mangle]
 pub extern "C" fn _start() -> ! {
+    init_heap();
     let mut b = Board::default();
 
     // print(b);
-    let mut history = vec![];
+    let mut history: Vec<Move> = vec![];
 
     loop {
-        let mut s = input(">>> ");
-        s = s.trim().to_string();
+        // let mut s = input(">>> ");
+        // s = s.trim().to_string();
 
-        let m = if s.is_empty() {
+        // let m = if s.is_empty() {
             println(b"Waiting for CPU to choose best move...");
-            get_cpu_move(&b, true)
-        } else if s == "worst" {
-            println(b"Waiting for CPU to choose worst move...");
-            get_cpu_move(&b, false)
-        } else if s == "rate" {
-            continue;
-        } else if s == "pass" {
-            b = b.change_turn();
-            continue;
-        } else if s == "history" {
-            for i in 0..history.len() {
-                if i < history.len() - 1 {
-                    print(history[i]);
-                    print(b" ");
-                    println(history[i+1]);
-                } else {
-                    println(history[i]);
-                }
-            }
-            continue;
-        } else {
-            match Move::try_from(s) {
-                Ok(m) => m,
-                Err(e) => {
-                    println(e);
-                    continue;
-                }
-            }
-        };
+            let m = get_cpu_move(&b, true);
+        // } else if s == "worst" {
+        //     println(b"Waiting for CPU to choose worst move...");
+        //     get_cpu_move(&b, false)
+        // } else if s == "rate" {
+        //     continue;
+        // } else if s == "pass" {
+        //     b = b.change_turn();
+        //     continue;
+        // } else if s == "history" {
+        //     for i in 0..history.len() {
+        //         if i < history.len() - 1 {
+        //             print(history[i]);
+        //             print(b" ");
+        //             println(history[i+1]);
+        //         } else {
+        //             println(history[i]);
+        //         }
+        //     }
+        //     continue;
+        // } else {
+        //     match Move::try_from(s) {
+        //         Ok(m) => m,
+        //         Err(e) => {
+        //             println(e);
+        //             continue;
+        //         }
+        //     }
+        // };
 
         match b.play_move(m) {
             GameResult::Continuing(next_board) => {
                 b = next_board;
-                println(b);
+                println(b"move");
                 history.push(m);
             }
 
             GameResult::Victory(winner) => {
-                println(b);
+                // println(b);
                 // println!("{} loses. {} is victorious.", !winner, winner);
                 break;
             }
 
             GameResult::IllegalMove(x) => {
-                print(x);
-                println(b" is an illegal move.");
+            //     print(x);
+            //     println(b" is an illegal move.");
             }
 
             GameResult::Stalemate => {
@@ -165,9 +186,9 @@ pub extern "C" fn _start() -> ! {
         }
     }
 
-    for m in history {
-        println(m);
-    }
+    // for m in history {
+    //     println(m);
+    // }
 
     loop {}
 }
