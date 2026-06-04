@@ -86,12 +86,6 @@ class JumpAndLinkRegister(Instruction):
     def evaluate(self, program: Program, cur_block: Block, comments: bool = False):
         concater.rem(f"jalr {self.src} {self.reg.offset}({self.reg.register})", comments)
 
-        if self.src != ZERO:
-            new_nexts = cur_block.find_block_rel(4)
-            new_next_num = 0
-            for i, new_next in enumerate(new_nexts):
-                new_next_num += new_next * (BLOCK_SIZE ** i)
-            self.src.change_big(new_next_num, clear=True)
         if self.reg.register == ZERO:
             new_nexts = [0, 0, 0, PROGRAM_START_ADDRESS]
             offset_ = self.reg.offset
@@ -102,6 +96,12 @@ class JumpAndLinkRegister(Instruction):
             AddI(self.reg.register, self.reg.register, self.reg.offset).evaluate(program, cur_block)
             JumpRegister(self.reg.register).evaluate(program, cur_block)
             AddI(self.reg.register, self.reg.register, -self.reg.offset).evaluate(program, cur_block)
+        if self.src != ZERO:
+            new_nexts = cur_block.find_block_rel(4)
+            new_next_num = 0
+            for i, new_next in enumerate(new_nexts):
+                new_next_num += new_next * (BLOCK_SIZE ** i)
+            self.src.change_big(new_next_num, clear=True)
 
 
 @dataclass
@@ -118,8 +118,8 @@ class AddUpperImmToPC(Instruction):
         id_num += id_list[1] * 256
         id_num += id_list[2] * (256 ** 2)
         id_num += id_list[3] * (256 ** 3)
-        id_num += self.value
-        print(f"{id_num:x}")
+        id_num += self.value * (2 ** 12)
+        id_num %= 2 ** 32
         LoadI(self.dst, id_num).evaluate(program, cur_block)
 
 
