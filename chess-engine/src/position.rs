@@ -78,8 +78,8 @@ pub const H8: Position = Position::new(7, 7);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Position {
-    row: i32,
-    col: i32,
+    pub row: i32,
+    pub col: i32,
 }
 
 impl core::fmt::Display for Position {

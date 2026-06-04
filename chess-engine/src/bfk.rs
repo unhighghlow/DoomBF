@@ -9,6 +9,8 @@ use core::alloc::GlobalAlloc;
 use talc::{*, source::Claim};
 use core::arch::asm;
 use core::panic::PanicInfo;
+use core::convert::TryFrom;
+
 
 
 struct SyncAlloc {
@@ -127,44 +129,48 @@ pub extern "C" fn _start() -> ! {
 
     loop {
         // let mut s = input(">>> ");
+        let s: &[u8] = &[];
         // s = s.trim().to_string();
 
-        // let m = if s.is_empty() {
+        let m = if s.is_empty() {
             println(b"Waiting for CPU to choose best move...");
-            let m = get_cpu_move(&b, true);
-        // } else if s == "worst" {
-        //     println(b"Waiting for CPU to choose worst move...");
-        //     get_cpu_move(&b, false)
-        // } else if s == "rate" {
-        //     continue;
-        // } else if s == "pass" {
-        //     b = b.change_turn();
-        //     continue;
-        // } else if s == "history" {
-        //     for i in 0..history.len() {
-        //         if i < history.len() - 1 {
-        //             print(history[i]);
-        //             print(b" ");
-        //             println(history[i+1]);
-        //         } else {
-        //             println(history[i]);
-        //         }
-        //     }
-        //     continue;
-        // } else {
-        //     match Move::try_from(s) {
-        //         Ok(m) => m,
-        //         Err(e) => {
-        //             println(e);
-        //             continue;
-        //         }
-        //     }
-        // };
+            get_cpu_move(&b, true)
+        } else if s == b"worst" {
+            println(b"Waiting for CPU to choose worst move...");
+            get_cpu_move(&b, false)
+        } else if s == b"rate" {
+            continue;
+        } else if s == b"pass" {
+            b = b.change_turn();
+            continue;
+        } else if s == b"history" {
+            for i in 0..history.len() {
+                if i < history.len() - 1 {
+                    print_move(history[i]);
+                    print(b" ");
+                    print_move(history[i+1]);
+                    print(b"\n");
+                } else {
+                    print_move(history[i]);
+                    print(b"\n");
+                }
+            }
+            continue;
+        } else {
+            match Move::try_from(s) {
+                Ok(m) => m,
+                Err(e) => {
+                    println(b"error");
+                    continue;
+                }
+            }
+        };
 
         match b.play_move(m) {
             GameResult::Continuing(next_board) => {
                 b = next_board;
-                println(b"move");
+                print_move(m);
+                print(b"\n");
                 history.push(m);
             }
 
@@ -214,6 +220,43 @@ fn print(s: &[u8]) -> () {
 fn println(s: &[u8]) -> () {
     print(s);
     put_char(b'\n');
+}
+
+fn print_move(mov: Move) -> () {
+    match mov {
+        Move::Piece(from, to) => {
+            print_pos(from);
+            print(b" to ");
+            print_pos(to);
+        },
+        Move::Promotion(from, to, piece) => {
+            print_pos(from);
+            print(b" to ");
+            print_pos(to);
+            print(b" ");
+            print(piece.get_name().as_bytes());  // XXX
+        }
+        Move::KingSideCastle => print(b"O-O"),
+        Move::QueenSideCastle => print(b"O-O-O"),
+        Move::Resign => print(b"Resign"),
+    }
+}
+
+fn print_pos(pos: Position) -> () {
+    put_char(
+        match pos.col {
+            0 => b'a',
+            1 => b'b',
+            2 => b'c',
+            3 => b'd',
+            4 => b'e',
+            5 => b'f',
+            6 => b'g',
+            7 => b'h',
+            _ => b'?',
+        }
+    );
+    print_number(pos.row + 1);
 }
 
 fn print_number(mut num: i32) -> () {

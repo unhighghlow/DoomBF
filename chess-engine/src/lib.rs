@@ -150,13 +150,15 @@ pub enum Move {
 /// - `"e2 to e4"`
 ///
 /// Parsing a move such as `"knight to e4"` or `"Qxe4"` will NOT work.
-impl TryFrom<String> for Move {
+use core::str::from_utf8;
+
+impl TryFrom<&[u8]> for Move {
     type Error = String;
 
-    fn try_from(repr: String) -> Result<Self, Self::Error> {
-        let repr = repr.trim().to_string();
+    fn try_from(repr: &[u8]) -> Result<Self, Self::Error> {
+        let repr = from_utf8(repr).unwrap();
 
-        Ok(match repr.as_str() {
+        Ok(match repr {
             "resign" | "resigns" => Self::Resign,
             "queenside castle" | "castle queenside" | "O-O-O" | "0-0-0" | "o-o-o" => {
                 Self::QueenSideCastle
@@ -208,7 +210,7 @@ impl Move {
     ///
     /// Parsing a move such as `"knight to e4"` or `"Qxe4"` will NOT work.
     pub fn parse(repr: String) -> Result<Self, String> {
-        Self::try_from(repr)
+        Self::try_from(repr.as_bytes())
     }
 }
 
