@@ -22,6 +22,7 @@ MNEMONICS["lui"] = LoadUpperI
 MNEMONICS["mv"] = Move
 MNEMONICS["neg"] = Neg
 MNEMONICS["nop"] = Nop
+MNEMONICS["unimp"] = Unimp
 
 # Arithmetic
 MNEMONICS["add"] = Add
@@ -103,6 +104,8 @@ def is_jump_instruction(instr):
     return isinstance(
         instr,
         (
+            Unimp,
+
             Jump,
             JumpRegister,
             JumpAndLink,

@@ -92,6 +92,13 @@ class Output(Instruction):
 
 
 @dataclass
+class Unimp(Instruction):
+    def evaluate(self, program: Program, cur_block: Block, comments: bool = False):
+        concater.debug()
+        scraps[0].assert_val(1)
+
+
+@dataclass
 class Ecall(Instruction):
     def evaluate(self, program: Program, cur_block: Block, comments: bool = False):
         concater.rem("ecall", comments)
