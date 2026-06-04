@@ -47,7 +47,12 @@ Doom запускается за несколько минут и выдает �
 
 ### Для Linux
 
-*Рекомендуем использовать [`nix-shell`](https://nixos.org/download)*
+## Nix
+
+```bash
+sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --daemon
+TODO
+```
 
 
 ### Для Debian/Ubuntu
