@@ -49,6 +49,8 @@ You can find example programs in `examples` folder.
    *-c option enables compression* - you must enable it if you
    enabled compressing in this project on step 3
 
+[ibf repository](https://github.com/sit-itmo/DoomBF/tree/master/bf/industrial-bf)
+
 ## Configuration
 
 Configuration is done by modifying config.py file.
@@ -85,7 +87,7 @@ Otherwise, it will only take up a few megabytes.
 - Fix TODOs and NotImplementedErrors
 - Add more ECALLs
 - Add more asserts to python and brainfuck
-- Compile and run Doom
+- [Compile and run Doom](https://github.com/sit-itmo/DoomBF)
 
 ## Contribution
 
