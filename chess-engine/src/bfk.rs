@@ -38,7 +38,7 @@ static TALC: SyncAlloc = SyncAlloc{inner:TalcCell::new(unsafe {
 
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    let c: char = 'a';
+    let c: u8 = b'a';
     put_char(c);
 
     let mut vec = Vec::with_capacity(100);
@@ -46,15 +46,15 @@ pub extern "C" fn _start() -> ! {
     put_char(c);
     vec.extend(0..300usize);
 
-    put_char(c);
-
+    print(b"\nsuccess\n");
     loop {}
 }
 
-fn put_char(c: char) -> () {
+
+fn print(s: &[u8]) -> () {
     let mut a0: u32 = 1;
-    let a1: *const char = &c;
-    let size: u32 = 1;
+    let a1: *const u8 = s.as_ptr();
+    let size: usize = s.len();
 
     unsafe {
         asm!(
@@ -67,7 +67,13 @@ fn put_char(c: char) -> () {
     };
 }
 
+fn put_char(c: u8) -> () {
+    let s: &[u8; 1] = &[c];
+    print(s);
+}
+
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
+    print(b"\npanic\n");
     loop {}
 }
