@@ -1,3 +1,4 @@
+.venv
 .vs
 .vscode
 build
@@ -33,3 +34,6 @@ doom.bpk.addr
 .idea
 doom.bpk
 doom.bpk.addr
+
+lightning-2.2.3.tar.gz
+lightning-2.2.3

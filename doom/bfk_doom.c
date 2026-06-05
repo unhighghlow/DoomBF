@@ -4,11 +4,13 @@
 #  include <time.h>
 #  include <stdlib.h>
 #  include <stdio.h>
+#  include <stddef.h>
+#  include <stdint.h>
+#  include <unistd.h>
+#else
+#  include <stddef.h>
 #endif
 
-#include <stddef.h>
-#include <stdint.h>
-#include <unistd.h>
 
 #include "crt/doom_env.h"
 #include "doom_wad.h" /* data_doom_wad */
@@ -23,7 +25,7 @@ struct DoomControlRegs *g_DoomControlRegs = &g_BrainfuckDoomControlRegs;
 unsigned int cur_time_us;
 unsigned int cur_time_sec;
 
-static inline void EnvWrite(char *s, uint16_t length) {
+static inline void EnvWrite(char *s, unsigned short length) {
     #ifdef _BF
         register long a0 __asm__("a0") = 1; // stdout
         register const char *a1 __asm__("a1") = s;

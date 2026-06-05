@@ -28,3 +28,7 @@ test: ibf
 	./test.sh
 
 .PHONY: run
+
+
+clean:
+	rm -f *.o ./ibf
