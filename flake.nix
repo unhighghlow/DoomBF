@@ -81,10 +81,6 @@
         cp -r usr $out
         ln -s ${riscv64-binutils-bin}/bin/riscv64-unknown-elf-as $out/libexec/gcc/riscv64-unknown-elf/15/as
       '';
-      /*postFixup = ''
-        wrapProgram $out/bin/riscv64-unknown-elf-gcc \
-          --prefix PATH : ${riscv64-binutils-bin}/bin
-      '';*/
     };
   in {
     devShells.${system} = {
