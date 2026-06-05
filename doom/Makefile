@@ -1,6 +1,6 @@
 find_executable = $(shell for exe in $(1); do which $$exe 2>/dev/null && break; done)
 
-RISCV_CCS := riscv32-none-elf-gcc riscv32-unknown-elf-gcc riscv64-none-elf-gcc riscv64-unknown-elf-gcc
+RISCV_CCS := riscv32-none-elf-gcc riscv32-unknown-elf-gcc riscv32-elf-gcc riscv64-none-elf-gcc riscv64-unknown-elf-gcc riscv64-elf-gcc
 RISCV_CC := $(call find_executable,$(RISCV_CCS))
 
 CFLAGS = -std=c11 -g
