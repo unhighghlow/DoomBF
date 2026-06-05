@@ -47,12 +47,22 @@ Doom запускается за несколько минут и выдает �
 
 ### Для Linux
 
-## Nix
+## Другие дистрибутивы (Nix)
 
 ```bash
 sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --daemon
-TODO
 ```
+
+И после завершения, в новом терминале:
+
+```bash
+git clone https://github.com/sit-itmo/DoomBF
+cd DoomBF
+nix develop . --extra-experimental-features 'nix-command flakes'
+make run
+```
+
+## Ubuntu
 
 Предварительно надо установить библиотеки. Для Debian/ubuntu:
 ```bash
