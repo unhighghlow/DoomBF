@@ -31,9 +31,30 @@
         ]))
       ];
     };
-    riscv32-gcc-bin = pkgs.stdenvNoCC.mkDerivation {
-      name = "riscv32-elf-ubuntu-24.04-gcc";
+    riscv64-binutils-bin = pkgs.stdenvNoCC.mkDerivation {
+      name = "binutils-riscv64-unknown-elf-debian";
       nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+      buildInputs = with pkgs; [
+        zlib
+        zstd
+      ];
+      src = pkgs.fetchurl {
+        url = "http://ftp.debian.org/debian/pool/main/b/binutils-embedded/binutils-riscv64-unknown-elf_2.46-1+28_amd64.deb";
+        hash = "sha256-9h3nk+ciTqqrWRIqDdXWV2X9yekMZAkLumYISrhgrec=";
+      };
+      unpackPhase = ''
+        ${pkgs.dpkg}/bin/dpkg -x $src .
+      '';
+      installPhase = ''
+        cp -r usr $out
+      '';
+    };
+    riscv64-gcc-bin = pkgs.stdenvNoCC.mkDerivation {
+      name = "gcc-riscv64-unknown-elf-debian";
+      nativeBuildInputs = with pkgs; [
+        autoPatchelfHook
+        makeWrapper
+      ];
       buildInputs = with pkgs; [
         glib
         ncurses
@@ -46,6 +67,9 @@
         expat
         isl_0_23
       ];
+      propagatedBuildInputs = [
+        riscv64-binutils-bin
+      ];
       src = pkgs.fetchurl {
         url = "http://ftp.debian.org/debian/pool/main/g/gcc-riscv64-unknown-elf/gcc-riscv64-unknown-elf_15.2.0-23_amd64.deb";
         hash = "sha256-hu1y6LVsZdCjvXgjakWFSH3p23L8V+2o7Kusd1wuTbk=";
@@ -55,11 +79,12 @@
       '';
       installPhase = ''
         cp -r usr $out
+        ln -s ${riscv64-binutils-bin}/bin/riscv64-unknown-elf-as $out/libexec/gcc/riscv64-unknown-elf/15/as
       '';
     };
   in {
     devShells.${system} = {
-      default = mkShellWith riscv32-gcc-bin;
+      default = mkShellWith riscv64-gcc-bin;
       src = mkShellWith crossPkgs.stdenv.cc;
     };
   };
