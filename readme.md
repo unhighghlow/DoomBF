@@ -45,23 +45,36 @@ Doom запускается за несколько минут и выдает �
 - X11Lib
 - GNU Lightning
 
-### Для Linux
+## Установка зависимостей
 
-*Рекомендуем использовать [`nix-shell`](https://nixos.org/download)*
+### Все дистрибутивы (Nix)
 
-Предварительно надо установить библиотеки. Для Debian/ubuntu:
 ```bash
-sudo apt-get update
-sudo apt-get install libx11-dev
+sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --daemon
 ```
 
-Для установки GNU lightning см. [инструкцию](https://www.gnu.org/software/lightning/manual/html_node/Installation.html)
-
-Замените riscv32-none-elf-gcc в файле doom/Makefile на ваш установленный risc-v gcc
+И после завершения, в новом терминале:
 
 ```bash
-make
-make run
+git clone https://github.com/sit-itmo/DoomBF
+cd DoomBF
+nix develop . --extra-experimental-features 'nix-command flakes'
+```
+
+### Debian/Ubuntu
+
+```bash
+git clone https://github.com/sit-itmo/DoomBF
+cd DoomBF
+./install_ubuntu
+source .venv/bin/activate
+```
+
+## Запуск
+
+```bash
+make  # собрать Doom в brainfuck
+make run  # собрать Doom в brainfuck и запустить
 ```
 
 ### Дополнительно

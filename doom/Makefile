@@ -1,3 +1,8 @@
+find_executable = $(shell for exe in $(1); do which $$exe 2>/dev/null && break; done)
+
+RISCV_CCS := riscv32-none-elf-gcc riscv32-unknown-elf-gcc riscv32-elf-gcc riscv64-none-elf-gcc riscv64-unknown-elf-gcc riscv64-elf-gcc
+RISCV_CC := $(call find_executable,$(RISCV_CCS))
+
 CFLAGS = -std=c11 -g
 
 DOOM_FILES_REL = \
@@ -47,7 +52,7 @@ lnx_doom: lnx_doom.o $(DOOM_OBJECTS) $(CRT_OBJECTS)
 bfk_doom.o: doom_wad.h
 
 bfk_doom.elf: bfk_doom.c doom_wad.h $(DOOM_SOURCES) $(CRT_SOURCES)
-	riscv32-none-elf-gcc \
+	$(RISCV_CC) \
 	    -O3 \
 	    -march=rv32i \
 	    -mabi=ilp32 \
