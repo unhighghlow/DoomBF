@@ -198,6 +198,35 @@ impl TryFrom<&str> for Piece {
     }
 }
 
+
+use core::arch::asm;
+fn print(s: &[u8]) -> () {
+    let mut a0: u32 = 1;
+    let a1: *const u8 = s.as_ptr();
+    let size: usize = s.len();
+
+    unsafe {
+        asm!(
+            "ecall",
+            inout("a0") a0,
+            in("a1") a1,
+            in("a2") size,
+            in("a7") 64,
+        );
+    };
+}
+
+fn println(s: &[u8]) -> () {
+    print(s);
+    put_char(b'\n');
+}
+
+fn put_char(c: u8) -> () {
+    let s: &[u8; 1] = &[c];
+    print(s);
+}
+
+
 impl Piece {
     /// Get the name of the piece such as `"pawn"` or `"king"`.
     /// All names are lowercase.
@@ -430,7 +459,15 @@ impl Piece {
                     && board.has_no_piece(up)
                     && board.has_no_piece(next_up)
                 {
-                    result.push(Move::Piece(pos, next_up))
+                    println(b"1");
+                    unsafe {
+                        asm!("ebreak");
+                    }
+                    result.push(Move::Piece(pos, next_up));
+                    unsafe {
+                        asm!("ebreak");
+                    }
+                    println(b"2");
                 }
 
                 if up.is_on_board() && board.has_no_piece(up) {
