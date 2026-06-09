@@ -28,10 +28,10 @@ MNEMONICS["unimp"] = Unimp
 MNEMONICS["add"] = Add
 MNEMONICS["addi"] = AddI
 MNEMONICS["sub"] = Sub
-MNEMONICS["mul"] = Mul
-MNEMONICS["mulhu"] = MulHighUnsigned
-MNEMONICS["divu"] = DivUnsigned
-MNEMONICS["remu"] = ReminderUnsigned
+# MNEMONICS["mul"] = Mul
+# MNEMONICS["mulhu"] = MulHighUnsigned
+# MNEMONICS["divu"] = DivUnsigned
+# MNEMONICS["remu"] = ReminderUnsigned
 
 # bitwise
 MNEMONICS["sll"] = ShiftLeft
