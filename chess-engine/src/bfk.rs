@@ -71,9 +71,9 @@ use chess_engine::*;
 
 fn get_cpu_move(b: &Board, best: bool) -> Move {
     let (m, count, _) = if best {
-        b.get_best_next_move(4)
+        b.get_best_next_move(2)
     } else {
-        b.get_worst_next_move(4)
+        b.get_worst_next_move(2)
     };
 
     print(b"CPU evaluated {} moves before choosing to ");
@@ -125,80 +125,80 @@ fn get_cpu_move(b: &Board, best: bool) -> Move {
 pub extern "C" fn _start() -> ! {
     init_heap();
     let mut b = Board::default();
-    let moves = b.get_legal_moves();
-    print_number_u(moves.len() as u32);
-    println(b" moves");
+    // let moves = b.get_legal_moves();
+    // print_number_u(moves.len() as u32);
+    // println(b" moves");
 
-    // let mut history: Vec<Move> = vec![];
+    let mut history: Vec<Move> = vec![];
 
-    // loop {
-    //     // let mut s = input(">>> ");
-    //     let s: &[u8] = &[];
-    //     // s = s.trim().to_string();
+    loop {
+        // let mut s = input(">>> ");
+        let s: &[u8] = &[];
+        // s = s.trim().to_string();
 
-    //     let m = if s.is_empty() {
-    //         println(b"Waiting for CPU to choose best move...");
-    //         get_cpu_move(&b, true)
-    //     } else if s == b"worst" {
-    //         println(b"Waiting for CPU to choose worst move...");
-    //         get_cpu_move(&b, false)
-    //     } else if s == b"rate" {
-    //         continue;
-    //     } else if s == b"pass" {
-    //         b = b.change_turn();
-    //         continue;
-    //     } else if s == b"history" {
-    //         for i in 0..history.len() {
-    //             if i < history.len() - 1 {
-    //                 print_move(history[i]);
-    //                 print(b" ");
-    //                 print_move(history[i+1]);
-    //                 print(b"\n");
-    //             } else {
-    //                 print_move(history[i]);
-    //                 print(b"\n");
-    //             }
-    //         }
-    //         continue;
-    //     } else {
-    //         match Move::try_from(s) {
-    //             Ok(m) => m,
-    //             Err(e) => {
-    //                 println(b"error");
-    //                 continue;
-    //             }
-    //         }
-    //     };
+        let m = if s.is_empty() {
+            println(b"Waiting for CPU to choose best move...");
+            get_cpu_move(&b, true)
+        } else if s == b"worst" {
+            println(b"Waiting for CPU to choose worst move...");
+            get_cpu_move(&b, false)
+        } else if s == b"rate" {
+            continue;
+        } else if s == b"pass" {
+            b = b.change_turn();
+            continue;
+        } else if s == b"history" {
+            for i in 0..history.len() {
+                if i < history.len() - 1 {
+                    print_move(history[i]);
+                    print(b" ");
+                    print_move(history[i+1]);
+                    print(b"\n");
+                } else {
+                    print_move(history[i]);
+                    print(b"\n");
+                }
+            }
+            continue;
+        } else {
+            match Move::try_from(s) {
+                Ok(m) => m,
+                Err(e) => {
+                    println(b"error");
+                    continue;
+                }
+            }
+        };
 
-    //     match b.play_move(m) {
-    //         GameResult::Continuing(next_board) => {
-    //             b = next_board;
-    //             print_move(m);
-    //             print(b"\n");
-    //             history.push(m);
-    //         }
+        match b.play_move(m) {
+            GameResult::Continuing(next_board) => {
+                b = next_board;
+                print_move(m);
+                print(b"\n");
+                history.push(m);
+            }
 
-    //         GameResult::Victory(winner) => {
-    //             // println(b);
-    //             // println!("{} loses. {} is victorious.", !winner, winner);
-    //             break;
-    //         }
+            GameResult::Victory(winner) => {
+                // println(b);
+                // println!("{} loses. {} is victorious.", !winner, winner);
+                break;
+            }
 
-    //         GameResult::IllegalMove(x) => {
-    //         //     print(x);
-    //         //     println(b" is an illegal move.");
-    //         }
+            GameResult::IllegalMove(x) => {
+            //     print(x);
+            //     println(b" is an illegal move.");
+            }
 
-    //         GameResult::Stalemate => {
-    //             println(b"Drawn game.");
-    //             break;
-    //         }
-    //     }
+            GameResult::Stalemate => {
+                println(b"Drawn game.");
+                break;
+            }
+        }
+    }
+
+    // for m in history {
+    //     println(m);
     // }
-
-    // // for m in history {
-    // //     println(m);
-    // // }
 
     loop {}
 }
