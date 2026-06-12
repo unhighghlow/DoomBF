@@ -7,8 +7,8 @@ import argparse
 import re
 import subprocess
 import sys
-import time
 from pathlib import Path
+
 import pexpect
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -81,7 +81,7 @@ def parse_stop(chunk: str):
 
     mnemonic = re.findall(r">.*\n", plain)[-1]
     mnemonic = mnemonic.strip().lstrip(">").strip()
-    return mnemonic, next_addr, next_components, regs, plain
+    return mnemonic, next_addr, regs, plain
 
 
 def get_output(child: pexpect.spawn, command: str, i: int):
@@ -96,7 +96,7 @@ def get_output(child: pexpect.spawn, command: str, i: int):
     elif idx == 2:
         print("ibf завершился")
         sys.exit(1)
-    mnemonic, next_addr, next_components, regs, plain = parse_stop(chunk)
+    mnemonic, next_addr, regs, plain = parse_stop(chunk)
     print(
         f"{command} #{i:5d}\n"
         f"  next=0x{next_addr or 0:04x}\n"
@@ -104,7 +104,7 @@ def get_output(child: pexpect.spawn, command: str, i: int):
         f"  x10=0x{regs.get("x10", 0):08x}"
     )
     instr, args = parse_mnemonic(mnemonic)
-    return instr, args, next_addr, next_components, regs, plain
+    return instr, args, next_addr, regs, plain
 
 
 
@@ -149,7 +149,6 @@ JUMP_INSTRS = {
 }
 
 current_addr = 0
-current_linear = 0
 regs = {}
 memory = [0] * (16 ** 7)
 
@@ -171,33 +170,6 @@ def imm12(v: int) -> int:
     v &= 0xFFF
     return v if v < 0x800 else v - 0x1000
 
-
-def components_to_linear(components: list[int]) -> int:
-    return sum((components[i] & 0xFF) * (BLOCK_SIZE ** i) for i in range(4))
-
-
-def linear_to_components(linear: int) -> list[int]:
-    linear = u32(linear)
-    return [(linear // (BLOCK_SIZE ** i)) % BLOCK_SIZE for i in range(4)]
-
-
-def linear_to_packed(linear: int) -> int:
-    return pack_next_bytes(linear_to_components(linear))
-
-
-def reg_to_next(val: int) -> int:
-    val = u32(val) & ~1
-    digits = [(val >> (4 * i)) & 0xF for i in range(8)]
-    components = [digits[2 * j] | (digits[2 * j + 1] << 4) for j in range(4)]
-    return pack_next_bytes(components)
-
-
-def next_addr_add(linear: int, offset: int) -> int:
-    linear += offset
-    assert linear >= 0, f"negative next addr: {linear:#x} (offset={offset:#x})"
-    return linear_to_packed(linear)
-
-
 def write_reg(rd: str, value: int) -> None:
     if rd != "x0":
         regs[rd] = u32(value)
@@ -218,15 +190,6 @@ def mem_read(addr: int, size: int, signed: bool) -> int:
     if signed and raw >= (1 << (size * 8 - 1)):
         raw -= 1 << (size * 8)
     return u32(raw)
-
-
-def zero_jalr_next(offset: int) -> int:
-    components = [0, 0, 0, PROGRAM_START_ADDRESS]
-    off = offset
-    for i in range(4):
-        components[i] = (components[i] + (off % BLOCK_SIZE)) % BLOCK_SIZE
-        off //= BLOCK_SIZE
-    return pack_next_bytes(components)
 
 
 def branch_taken(instr: str, args: list) -> bool:
@@ -265,20 +228,12 @@ def branch_taken(instr: str, args: list) -> bool:
     raise ValueError(instr)
 
 
-def run_command(instr, args, next_addr_predict, next_components, regs_predict, plain):
-    global current_addr, current_linear, regs
-    if regs == {}:
-        assert next_components is not None
-        current_addr = next_addr_predict
-        current_linear = components_to_linear(next_components)
-        regs = {
-            **regs_predict,
-            "x0": 0,
-        }
-        return
+def run_command(instr, args, next_addr_predict, regs_predict, plain):
+    global current_addr, regs
 
-    pc = current_addr
-    pc_linear = current_linear
+    assert current_addr is not None
+    assert regs != {}
+
     predicted_next = None
     prev_regs = regs.copy()
 
@@ -368,49 +323,47 @@ def run_command(instr, args, next_addr_predict, next_components, regs_predict, p
         write_reg(args[0], mem_read(regs[args[2]] + args[1], 1, signed=False))
 
     elif instr == "auipc":
-        write_reg(args[0], u32(pc_linear + (args[1] << 12)))
+        write_reg(args[0], u32(current_addr + (args[1] << 12)))
     elif instr == "j":
-        predicted_next = next_addr_add(pc_linear, args[0])
+        predicted_next = current_addr + args[0]
     elif instr == "jr":
-        predicted_next = reg_to_next(regs[args[0]])
+        predicted_next = regs[args[0]]
     elif instr == "jal":
-        write_reg(args[0], u32(pc_linear + 4))
-        predicted_next = next_addr_add(pc_linear, args[-1])
+        write_reg(args[0], u32(current_addr + 4))
+        predicted_next = current_addr + args[-1]
     elif instr == "jalr":
         base, offset = args[2], args[1]
         if base == "x0":
-            predicted_next = zero_jalr_next(offset)
+            predicted_next = PROGRAM_START_ADDRESS * (16 ** 3) + offset
         else:
-            predicted_next = reg_to_next(regs[base] + offset)
-        write_reg(args[0], u32(pc_linear + 4))
+            predicted_next = regs[base] + offset
+        write_reg(args[0], u32(current_addr + 4))
     elif instr == "call":
-        write_reg("x1", u32(pc_linear + 4))
-        predicted_next = next_addr_add(pc_linear, args[-1])
+        write_reg("x1", u32(current_addr + 4))
+        predicted_next = current_addr + args[-1]
     elif instr == "ret":
-        predicted_next = reg_to_next(regs["x1"])
+        predicted_next = regs["x1"]
     elif instr in JUMP_INSTRS:
         offset = args[-1]
         predicted_next = (
-            next_addr_add(pc_linear, offset) if branch_taken(instr, args)
-            else next_addr_add(pc_linear, 4)
+            (current_addr + offset) if branch_taken(instr, args)
+            else (current_addr + 4)
         )
 
     else:
         raise NotImplementedError(instr)
 
     if predicted_next is None:
-        predicted_next = next_addr_add(pc_linear, 4)
+        predicted_next = current_addr + 4
 
     got = u32(next_addr_predict or 0)
     assert predicted_next == got, (
         f"{instr} {args}: predicted next=0x{predicted_next:04x}, "
-        f"got=0x{got:04x} (pc=0x{pc:04x})"
+        f"got=0x{got:04x} (pc=0x{current_addr:04x})"
         f"\n\n{plain}"
     )
 
-    assert next_components is not None
     current_addr = next_addr_predict
-    current_linear = components_to_linear(next_components)
     regs["x0"] = 0
     for i in range(1, 32):
         name = f"x{i}"
@@ -419,29 +372,66 @@ def run_command(instr, args, next_addr_predict, next_components, regs_predict, p
     
 
 
+def dump_tape(child: pexpect.spawn, tmp: Path):
+    subprocess.run(
+        (
+            "rm",
+            tmp/"tape.bin"
+        )
+    )
+    child.sendline("D")
+    child.expect(PROMPT)
+    with open(tmp/"tape.bin", "rb") as file:
+        tape = file.read()
+    for i, byte in enumerate(tape[0x124:]):
+        memory[i] = byte
+
+
+
+RUN_COUNT = 0
+
+
 
 def main() -> int:
+    global current_addr, regs
+
     ap = argparse.ArgumentParser(description="Отладка chess через ibf -d")
     ap.add_argument("--bpk", type=Path, default=Path("./out.bpk"))
     ap.add_argument("--ibf", type=Path, default=Path("./bin/ibf"))
     ap.add_argument("--tmp", type=Path, default=Path("./tmp"))
-    ap.add_argument("--build", action="store_true", help="cargo build + risc_bf.py -c")
-    ap.add_argument("--no-asserts", action="store_true", help="ibf -a")
     cmd_args = ap.parse_args()
 
-    cmd = f"{Path.absolute(cmd_args.ibf)} -cd {Path.absolute(cmd_args.bpk)}" + ("" if cmd_args.no_asserts else " -a")
+    cmd = f"{Path.absolute(cmd_args.ibf)} -acd {Path.absolute(cmd_args.bpk)}"
     child = pexpect.spawn(cmd, cwd=str(cmd_args.tmp), encoding="utf-8", timeout=600)
     child.expect("loading addrmap", timeout=10)
     child.expect(re.compile(r"next:.*?0x[0-9a-f]+"), timeout=120)
     child.expect(PROMPT, timeout=120)
 
+    if RUN_COUNT > 0:
+        for i in range(RUN_COUNT):
+            child.sendline("r")
+            _, _, next_addr_predict, regs_predict, _ = get_output(child, "r", -1)
+            current_addr = next_addr_predict
+            regs = {
+                **regs_predict,
+                "x0": 0,
+            }
+    else:
+        child.sendline("w")
+        _, _, next_addr_predict, regs_predict, _ = get_output(child, "w", -1)
+        current_addr = next_addr_predict
+        regs = {
+            **regs_predict,
+            "x0": 0,
+        }
+
+    dump_tape(child, cmd_args.tmp)
+
     i = 0
     while True:
-        command = "r" if i < 0 else "w"
-        child.sendline(command)
-        instr, args, next_addr_predict, next_components, regs_predict, plain = get_output(child, command, i)
-        if i >= 11:
-            run_command(instr, args, next_addr_predict, next_components, regs_predict, plain)
+        child.sendline("w")
+        instr, args, next_addr_predict, regs_predict, plain = get_output(child, "w", i)
+        run_command(instr, args, next_addr_predict, regs_predict, plain)
         i += 1
     child.sendline("q")
     return 0
