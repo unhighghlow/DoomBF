@@ -373,6 +373,7 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
 
 
 def dump_tape(child: pexpect.spawn, tmp: Path):
+    print("dumping tape...")
     subprocess.run(
         (
             "rm",
@@ -383,12 +384,13 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
     child.expect(PROMPT)
     with open(tmp/"tape.bin", "rb") as file:
         tape = file.read()
-    for i, byte in enumerate(tape[0x124:]):
+    for i, byte in enumerate(tape[0x124: (0x124 + (16 ** 7) + 10)]):
         memory[i] = byte
+    print("done")
 
 
 
-RUN_COUNT = 0
+RUN_COUNT = 1
 
 
 

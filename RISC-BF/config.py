@@ -28,7 +28,7 @@ ALLOW_DEBUG = True  # Allow breakpoints in concater.debug()
 # Using * symbol for weak breakpoints.
 BREAKPOINT_EVERY_CYCLE = False
 BREAKPOINT_EVERY_INSTRUCTION = False
-BREAKPOINT_AFTER_EVERY_INSTRUCTION = True
+BREAKPOINT_AFTER_EVERY_INSTRUCTION = True  # except ebreak, because it already has breakpoint
 
 # Generate .b.addr file with cells in "watch".
 GENERATE_ADDRMAP = True
