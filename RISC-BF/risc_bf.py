@@ -132,7 +132,7 @@ class Program:
                 for scrap in scraps:
                     scrap.assert_val(0)
             if isinstance(block.daughter_blocks[0], instructions.mnemonics.Debug):
-                concater.raw("#")
+                concater.debug()
             elif config.BREAKPOINT_AFTER_EVERY_INSTRUCTION:
                 concater.raw("*")
         else:

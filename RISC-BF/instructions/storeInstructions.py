@@ -168,7 +168,6 @@ class LoadHalfword(Instruction):
         out = scraps[3]
         self.src.get_cell(3).div_imm(8, mod, out)
         mod.move(self.src.get_cell(3))
-        out.debug()
         out.move(*[self.src.get_cell(i) for i in range(3, 8)], multiplier=[(8 if i == 3 else 15) for i in range(3, 8)])
 
 
@@ -196,7 +195,6 @@ class LoadByte(Instruction):
         out = scraps[3]
         self.src.get_cell(1).div_imm(8, mod, out)
         mod.move(self.src.get_cell(1))
-        out.debug()
         out.move(*[self.src.get_cell(i) for i in range(1, 8)], multiplier=[(8 if i == 1 else 15) for i in range(1, 8)])
 
 

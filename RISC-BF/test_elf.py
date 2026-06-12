@@ -98,7 +98,7 @@ def get_output(child: pexpect.spawn, command: str, i: int):
         sys.exit(1)
     mnemonic, next_addr, regs, plain = parse_stop(chunk)
     print(
-        f"{command} #{i:5d}\n"
+        f"{command} #{i:08d}\n"
         f"  next=0x{next_addr or 0:04x}\n"
         f"  mnemonic={mnemonic}\n"
         f"  x10=0x{regs.get("x10", 0):08x}"
@@ -258,7 +258,13 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
     elif instr == "ebreak":
         pass
     elif instr == "ecall":
-        pass
+        if regs[REGS_NAMES["a7"]] in [1, 86, 87]:
+            pass
+        elif regs[REGS_NAMES["a7"]] in [63, 64]:
+            regs[REGS_NAMES["a0"]] = regs_predict[REGS_NAMES["a0"]]
+        else:
+            raise ValueError(f"unknown ecall number {regs[REGS_NAMES["a7"]]}")
+
 
     elif instr == "sll":
         write_reg(args[0], u32(regs[args[1]] << shamt(regs[args[2]])))
@@ -398,7 +404,7 @@ def main() -> int:
     global current_addr, regs
 
     ap = argparse.ArgumentParser(description="Отладка chess через ibf -d")
-    ap.add_argument("--bpk", type=Path, default=Path("./out.bpk"))
+    ap.add_argument("--bpk", type=Path, default=Path("./doom.bpk"))
     ap.add_argument("--ibf", type=Path, default=Path("./bin/ibf"))
     ap.add_argument("--tmp", type=Path, default=Path("./tmp"))
     cmd_args = ap.parse_args()
