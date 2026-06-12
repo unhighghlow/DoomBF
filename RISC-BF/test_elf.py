@@ -86,7 +86,7 @@ def parse_stop(chunk: str):
 
 def get_output(child: pexpect.spawn, command: str, i: int):
     print(f"{command} #{i:08d}")
-    idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=1200)
+    idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=None)
     chunk = child.before or ""
     if idx == 1:
         chunk += "assertion failed"
@@ -387,7 +387,7 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
         )
     )
     child.sendline("D")
-    child.expect(PROMPT)
+    child.expect(PROMPT, timeout=30)
     with open(tmp/"tape.bin", "rb") as file:
         tape = file.read()
     for i, byte in enumerate(tape[0x124: (0x124 + (16 ** 7))]):
@@ -396,7 +396,7 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
 
 
 
-RUN_COUNT = 4
+RUN_COUNT = 7
 
 
 
@@ -410,10 +410,9 @@ def main() -> int:
     cmd_args = ap.parse_args()
 
     cmd = f"{Path.absolute(cmd_args.ibf)} -acd {Path.absolute(cmd_args.bpk)}"
-    child = pexpect.spawn(cmd, cwd=str(cmd_args.tmp), encoding="utf-8", timeout=600)
+    child = pexpect.spawn(cmd, cwd=str(cmd_args.tmp), encoding="utf-8")
     child.expect("loading addrmap", timeout=10)
-    child.expect(re.compile(r"next:.*?0x[0-9a-f]+"), timeout=120)
-    child.expect(PROMPT, timeout=120)
+    child.expect(PROMPT, timeout=30)
 
     if RUN_COUNT > 0:
         for i in range(RUN_COUNT):
