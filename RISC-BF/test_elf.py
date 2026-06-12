@@ -85,7 +85,8 @@ def parse_stop(chunk: str):
 
 
 def get_output(child: pexpect.spawn, command: str, i: int):
-    idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=10)
+    print(f"{command} #{i:08d}")
+    idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=1200)
     chunk = child.before or ""
     if idx == 1:
         chunk += "assertion failed"
@@ -98,10 +99,9 @@ def get_output(child: pexpect.spawn, command: str, i: int):
         sys.exit(1)
     mnemonic, next_addr, regs, plain = parse_stop(chunk)
     print(
-        f"{command} #{i:08d}\n"
         f"  next=0x{next_addr or 0:04x}\n"
         f"  mnemonic={mnemonic}\n"
-        f"  x10=0x{regs.get("x10", 0):08x}"
+        f"  ra=0x{regs.get(REGS_NAMES["ra"], 0):08x}"
     )
     instr, args = parse_mnemonic(mnemonic)
     return instr, args, next_addr, regs, plain
@@ -396,7 +396,7 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
 
 
 
-RUN_COUNT = 0
+RUN_COUNT = 4
 
 
 
@@ -404,7 +404,7 @@ def main() -> int:
     global current_addr, regs
 
     ap = argparse.ArgumentParser(description="Отладка chess через ibf -d")
-    ap.add_argument("--bpk", type=Path, default=Path("./doom.bpk"))
+    ap.add_argument("--bpk", type=Path, default=Path("../doom.bpk"))
     ap.add_argument("--ibf", type=Path, default=Path("./bin/ibf"))
     ap.add_argument("--tmp", type=Path, default=Path("./tmp"))
     cmd_args = ap.parse_args()
