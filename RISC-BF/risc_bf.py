@@ -131,9 +131,10 @@ class Program:
                 concater.assert_pos()
                 for scrap in scraps:
                     scrap.assert_val(0)
-            if config.BREAKPOINT_AFTER_EVERY_INSTRUCTION:
-                if not isinstance(block.daughter_blocks, instructions.mnemonics.Debug):
-                    concater.raw("*")
+            if isinstance(block.daughter_blocks[0], instructions.mnemonics.Debug):
+                concater.raw("#")
+            elif config.BREAKPOINT_AFTER_EVERY_INSTRUCTION:
+                concater.raw("*")
         else:
             for bl in block.daughter_blocks:
                 self.assemble_block(bl, deep + 1)

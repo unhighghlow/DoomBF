@@ -52,7 +52,6 @@ class Nop(Instruction):
 class Debug(Instruction):
     def evaluate(self, program: Program, cur_block: Block, comments: bool = False):
         concater.rem("ebreak", comments)
-        concater.debug()
 
 
 @dataclass

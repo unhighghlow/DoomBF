@@ -384,13 +384,13 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
     child.expect(PROMPT)
     with open(tmp/"tape.bin", "rb") as file:
         tape = file.read()
-    for i, byte in enumerate(tape[0x124: (0x124 + (16 ** 7) + 10)]):
+    for i, byte in enumerate(tape[0x124: (0x124 + (16 ** 7))]):
         memory[i] = byte
     print("done")
 
 
 
-RUN_COUNT = 1
+RUN_COUNT = 0
 
 
 
