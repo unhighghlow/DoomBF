@@ -179,21 +179,30 @@ void evaluate(uint8_t program[]) {
         jumptable['!'] = &&assert_value;
 #endif
 
-// #ifdef DEBUGGER
+#ifdef DEBUGGER
 
-// #define NEXT \
-//         inst = &program[pc]; \
-//         if (option_d && CMD_cmd(inst) != '#' && CMD_cmd(inst) != '*') \
-//                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
-//         goto *(jumptable[CMD_cmd(inst)]);
+#ifdef DEBUGGER_STEP
 
-// #else
+#define NEXT \
+        inst = &program[pc]; \
+        if (option_d && CMD_cmd(inst) != '#' && CMD_cmd(inst) != '*') \
+                debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
+        goto *(jumptable[CMD_cmd(inst)]);
+
+#else
+
+#define NEXT \
+        inst = &program[pc]; \
+        goto *(jumptable[CMD_cmd(inst)]);
+#endif
+
+#else
 
 #define NEXT \
         inst = &program[pc]; \
         goto *(jumptable[CMD_cmd(inst)]);
 
-// #endif
+#endif
 
         NEXT
 

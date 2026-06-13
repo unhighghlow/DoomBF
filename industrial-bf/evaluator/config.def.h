@@ -10,6 +10,7 @@
 //                     isn't used (mandelbrot 12s->15s) */
 // #define   DEBUGGER_DEFAULT_STATE DBG_STEP // or DBG_RUN
 // #define   DEBUGGER_TAPE_VIEW     8
+// #define   DEBUGGER_STEP  // It slows down execution very much, but allows to step one instruction a time
 #define ASSERTS
 //#define   DUMP_TAPE /* Dump tape on assert */
 #define CELL_FORMAT_STRING "%2x"

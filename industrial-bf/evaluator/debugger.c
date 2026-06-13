@@ -55,9 +55,11 @@ void debugger_help() {
                 "? - display help\n"
                 "r - run the program until a breakpoint is reached\n"
                 "w - run the program until a weak breakpoint is reached\n"
+#ifdef DEBUGGER_STEP
                 "s - step one instruction forward\n"
                 "x - run until the current loop ends\n"
                 "n - run until the next sourcemap line\n"
+#endif
                 "D - dump tape\n"
                 "a - load an addrmap file\n"
                 "q - quit\n"
@@ -246,6 +248,7 @@ skip_prompt:
                         case 'w':
                                 debugger_state = DBG_RUN_UNTIL_WEAK;
                                 goto continue_execution;
+#ifdef DEBUGGER_STEP
                         case 's':
                                 debugger_state = DBG_STEP;
                                 goto continue_execution;
@@ -258,6 +261,7 @@ skip_prompt:
                                 sm_next_target = get_current_sm_ind(pc)+1;
                                 debugger_state = DBG_SM_NEXT;
                                 goto continue_execution;
+#endif
                         case 'a':
                                 printf(G_FG "addrmap: " FG_r);
                                 fgets(filename, 16, stdin);
