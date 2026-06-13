@@ -222,8 +222,8 @@ int main(int argc, char *argv[]) {
         output_image(pixels);
 #ifdef _BF
         // i++;
-        // if (i == 7)
-        //     EnvExit(1);  // It is after GDHIGH not found
+        // if (i == 6)
+        //     EnvExit(1);  // It is before GDHIGH not found
         __asm__ volatile("ebreak");
 #endif
 #ifndef _BF

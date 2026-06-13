@@ -396,7 +396,7 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
 
 
 
-RUN_COUNT = 7
+RUN_COUNT = 6
 
 
 
@@ -405,7 +405,7 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description="Отладка chess через ibf -d")
     ap.add_argument("--bpk", type=Path, default=Path("../doom.bpk"))
-    ap.add_argument("--ibf", type=Path, default=Path("./bin/ibf"))
+    ap.add_argument("--ibf", type=Path, default=Path("../ibf"))
     ap.add_argument("--tmp", type=Path, default=Path("./tmp"))
     cmd_args = ap.parse_args()
 

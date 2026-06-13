@@ -566,14 +566,10 @@ void debugger_call(uint8_t reason, CELL tape[], uint8_t program[], uint64_t dp, 
         if (reason != BREAK_REASON_BREAKPOINT)
                 switch (debugger_state) {
                         case DBG_RUN:
-                                if (!program[pc])
-                                        debugger_print_output();
                                 return;
                         case DBG_RUN_UNTIL_WEAK:
                                 if (reason == BREAK_REASON_WEAK_BREAKPOINT)
                                         break;
-                                if (!program[pc])
-                                        debugger_print_output();
                                 return;
                         case DBG_STEP:
                                 break;

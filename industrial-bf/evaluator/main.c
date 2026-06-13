@@ -143,7 +143,8 @@ const void* jumptable[0x100];
 
 void evaluate(uint8_t program[]) {
 #ifdef DEBUGGER
-        debugger_init();
+        if (option_d)
+                debugger_init();
 #endif
         register uint64_t pc = 0;
         register uint64_t dp = 0;
@@ -333,5 +334,9 @@ assert_common:
 #endif
 
 exit:
+#ifdef DEBUGGER
+        if (option_d && !option_o)
+                debugger_print_output();
+#endif
         return;
 }
