@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from queue import Queue
+from threading import Thread
 
 import pexpect
 
@@ -17,40 +19,42 @@ ROOT = Path(__file__).resolve().parent
 
 REGS_NAMES = {
     **{f"x{i}": f"x{i}" for i in range(32)},
-    "zero" : "x0",
-    "ra" : "x1",
-    "sp" : "x2",
-    "gp" : "x3",
-    "tp" : "x4",
-    "t0" : "x5",
-    "t1" : "x6",
-    "t2" : "x7",
-    "s0" : "x8",
-    "fp" : "x8",
-    "s1" : "x9",
-    "a0" : "x10",
-    "a1" : "x11",
-    "a2" : "x12",
-    "a3" : "x13",
-    "a4" : "x14",
-    "a5" : "x15",
-    "a6" : "x16",
-    "a7" : "x17",
-    "s2" : "x18",
-    "s3" : "x19",
-    "s4" : "x20",
-    "s5" : "x21",
-    "s6" : "x22",
-    "s7" : "x23",
-    "s8" : "x24",
-    "s9" : "x25",
-    "s10" : "x26",
-    "s11" : "x27",
-    "t3" : "x28",
-    "t4" : "x29",
-    "t5" : "x30",
-    "t6" : "x31",
+    "zero": "x0",
+    "ra": "x1",
+    "sp": "x2",
+    "gp": "x3",
+    "tp": "x4",
+    "t0": "x5",
+    "t1": "x6",
+    "t2": "x7",
+    "s0": "x8",
+    "fp": "x8",
+    "s1": "x9",
+    "a0": "x10",
+    "a1": "x11",
+    "a2": "x12",
+    "a3": "x13",
+    "a4": "x14",
+    "a5": "x15",
+    "a6": "x16",
+    "a7": "x17",
+    "s2": "x18",
+    "s3": "x19",
+    "s4": "x20",
+    "s5": "x21",
+    "s6": "x22",
+    "s7": "x23",
+    "s8": "x24",
+    "s9": "x25",
+    "s10": "x26",
+    "s11": "x27",
+    "t3": "x28",
+    "t4": "x29",
+    "t5": "x30",
+    "t6": "x31",
 }
+
+q_to_run = Queue(maxsize=10000)
 
 
 def clean(s: str) -> str:
@@ -72,7 +76,9 @@ def parse_stop(chunk: str):
     regs = {}
     nxt = re.search(r"next: (0x[0-9a-f]+(?:, 0x[0-9a-f]+){3})", plain)
     if nxt:
-        next_components = [int(x, 16) for x in re.findall(r"0x([0-9a-f]+)", nxt.group(1))]
+        next_components = [
+            int(x, 16) for x in re.findall(r"0x([0-9a-f]+)", nxt.group(1))
+        ]
         next_addr = sum((v & 0xFF) << (8 * i) for i, v in enumerate(next_components))
 
     for m in re.finditer(r"^>?\s*(x\d+):\s*(.+)$", plain, re.M):
@@ -81,11 +87,12 @@ def parse_stop(chunk: str):
 
     mnemonic = re.findall(r">.*\n", plain)[-1]
     mnemonic = mnemonic.strip().lstrip(">").strip()
-    return mnemonic, next_addr, regs, plain
+    return mnemonic, next_addr, regs
 
 
-def get_output(child: pexpect.spawn, command: str, i: int):
-    print(f"{command} #{i:08d}")
+def get_output(child: pexpect.spawn, command: str, i: int, prnt: bool):
+    if prnt:
+        print(f"{command} #{i:08d}")
     idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=None)
     chunk = child.before or ""
     if idx == 1:
@@ -97,15 +104,15 @@ def get_output(child: pexpect.spawn, command: str, i: int):
     elif idx == 2:
         print("ibf завершился")
         sys.exit(1)
-    mnemonic, next_addr, regs, plain = parse_stop(chunk)
-    print(
-        f"  next=0x{next_addr or 0:04x}\n"
-        f"  mnemonic={mnemonic}\n"
-        f"  ra=0x{regs.get(REGS_NAMES["ra"], 0):08x}"
-    )
+    mnemonic, next_addr, regs = parse_stop(chunk)
+    if prnt:
+        print(
+            f"  next=0x{next_addr or 0:04x}\n"
+            f"  mnemonic={mnemonic}\n"
+            f"  ra_after=0x{regs.get(REGS_NAMES['ra'], 0):08x}"
+        )
     instr, args = parse_mnemonic(mnemonic)
-    return instr, args, next_addr, regs, plain
-
+    return instr, args, next_addr, regs
 
 
 def parse_imm(token: str) -> int:
@@ -143,14 +150,33 @@ MASK32 = 0xFFFFFFFF
 PROGRAM_START_ADDRESS = 16
 
 JUMP_INSTRS = {
-    "j", "jr", "jal", "jalr", "call", "ret",
-    "beq", "beqz", "bne", "bnez", "blt", "bltu", "bge", "bgeu",
-    "blez", "bgez", "bltz", "bgtz", "bgt", "ble", "bgtu", "bleu",
+    "j",
+    "jr",
+    "jal",
+    "jalr",
+    "call",
+    "ret",
+    "beq",
+    "beqz",
+    "bne",
+    "bnez",
+    "blt",
+    "bltu",
+    "bge",
+    "bgeu",
+    "blez",
+    "bgez",
+    "bltz",
+    "bgtz",
+    "bgt",
+    "ble",
+    "bgtu",
+    "bleu",
 }
 
 current_addr = 0
 regs = {}
-memory = [0] * (16 ** 7)
+memory = [0] * (16**7)
 
 
 def u32(v: int) -> int:
@@ -169,6 +195,7 @@ def shamt(v: int) -> int:
 def imm12(v: int) -> int:
     v &= 0xFFF
     return v if v < 0x800 else v - 0x1000
+
 
 def write_reg(rd: str, value: int) -> None:
     if rd != "x0":
@@ -228,11 +255,23 @@ def branch_taken(instr: str, args: list) -> bool:
     raise ValueError(instr)
 
 
-def run_command(instr, args, next_addr_predict, regs_predict, plain):
-    global current_addr, regs
+curr_instr_num = 0
+
+
+def run_command(instr, args, next_addr_predict, regs_predict):
+    global current_addr, regs, curr_instr_num
 
     assert current_addr is not None
     assert regs != {}
+
+
+    curr_instr_num += 1
+    print(f"w #{curr_instr_num:08d}")
+    print(
+        f"  next=0x{next_addr_predict or 0:04x}\n"
+        f"  mnemonic={instr} {args}\n"
+        f"  ra=0x{regs.get(REGS_NAMES['ra'], 0):08x}"
+    )
 
     predicted_next = None
     prev_regs = regs.copy()
@@ -263,8 +302,7 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
         elif regs[REGS_NAMES["a7"]] in [63, 64]:
             regs[REGS_NAMES["a0"]] = regs_predict[REGS_NAMES["a0"]]
         else:
-            raise ValueError(f"unknown ecall number {regs[REGS_NAMES["a7"]]}")
-
+            raise ValueError(f"unknown ecall number {regs[REGS_NAMES['a7']]}")
 
     elif instr == "sll":
         write_reg(args[0], u32(regs[args[1]] << shamt(regs[args[2]])))
@@ -340,7 +378,7 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
     elif instr == "jalr":
         base, offset = args[2], args[1]
         if base == "x0":
-            predicted_next = PROGRAM_START_ADDRESS * (16 ** 3) + offset
+            predicted_next = PROGRAM_START_ADDRESS * (16**3) + offset
         else:
             predicted_next = regs[base] + offset
         write_reg(args[0], u32(current_addr + 4))
@@ -352,8 +390,7 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
     elif instr in JUMP_INSTRS:
         offset = args[-1]
         predicted_next = (
-            (current_addr + offset) if branch_taken(instr, args)
-            else (current_addr + 4)
+            (current_addr + offset) if branch_taken(instr, args) else (current_addr + 4)
         )
 
     else:
@@ -364,9 +401,9 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
 
     got = u32(next_addr_predict or 0)
     assert predicted_next == got, (
-        f"{instr} {args}: predicted next=0x{predicted_next:04x}, "
-        f"got=0x{got:04x} (pc=0x{current_addr:04x})"
-        f"\n\n{plain}"
+        f"expected next=0x{predicted_next:08x}, "
+        f"got=0x{got:08x} (pc=0x{current_addr:08x})\n\n"
+        f"prev_regs={prev_regs}\n\nregs={regs}\n\nregs_brainfuck={regs_predict}"
     )
 
     current_addr = next_addr_predict
@@ -374,30 +411,31 @@ def run_command(instr, args, next_addr_predict, regs_predict, plain):
     for i in range(1, 32):
         name = f"x{i}"
         regs[name] = u32(regs[name])
-        assert regs[name] == regs_predict[name], (f"expected=0x{regs[name]:08x} got=0x{regs_predict[name]:08x} {name}\n\n{prev_regs}\n\n{regs}\n\n{regs_predict}")
-    
+        assert regs[name] == regs_predict[name], (
+            f"expected=0x{regs[name]:08x} got=0x{regs_predict[name]:08x} reg_name={name}\n\n"
+            f"prev_regs={prev_regs}\n\nregs={regs}\n\nregs_brainfuck={regs_predict}"
+        )
 
 
 def dump_tape(child: pexpect.spawn, tmp: Path):
     print("dumping tape...")
-    subprocess.run(
-        (
-            "rm",
-            tmp/"tape.bin"
-        )
-    )
+    subprocess.run(("rm", tmp / "tape.bin"))
     child.sendline("D")
     child.expect(PROMPT, timeout=30)
-    with open(tmp/"tape.bin", "rb") as file:
+    with open(tmp / "tape.bin", "rb") as file:
         tape = file.read()
-    for i, byte in enumerate(tape[0x124: (0x124 + (16 ** 7))]):
+    for i, byte in enumerate(tape[0x124 : (0x124 + (16**7))]):
         memory[i] = byte
     print("done")
 
 
+def runner():
+    while True:
+        instr, args, next_addr_predict, regs_predict = q_to_run.get()
+        run_command(instr, args, next_addr_predict, regs_predict)
+
 
 RUN_COUNT = 6
-
 
 
 def main() -> int:
@@ -417,7 +455,7 @@ def main() -> int:
     if RUN_COUNT > 0:
         for i in range(RUN_COUNT):
             child.sendline("r")
-            _, _, next_addr_predict, regs_predict, _ = get_output(child, "r", -1)
+            _, _, next_addr_predict, regs_predict = get_output(child, "r", -1, True)
             current_addr = next_addr_predict
             regs = {
                 **regs_predict,
@@ -425,7 +463,7 @@ def main() -> int:
             }
     else:
         child.sendline("w")
-        _, _, next_addr_predict, regs_predict, _ = get_output(child, "w", -1)
+        _, _, next_addr_predict, regs_predict = get_output(child, "w", -1, True)
         current_addr = next_addr_predict
         regs = {
             **regs_predict,
@@ -433,12 +471,13 @@ def main() -> int:
         }
 
     dump_tape(child, cmd_args.tmp)
+    Thread(target=runner).start()
 
     i = 0
     while True:
         child.sendline("w")
-        instr, args, next_addr_predict, regs_predict, plain = get_output(child, "w", i)
-        run_command(instr, args, next_addr_predict, regs_predict, plain)
+        instr, args, next_addr_predict, regs_predict = get_output(child, "w", i, False)
+        q_to_run.put((instr, args, next_addr_predict, regs_predict))
         i += 1
     child.sendline("q")
     return 0
