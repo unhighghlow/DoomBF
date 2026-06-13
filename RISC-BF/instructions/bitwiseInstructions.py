@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from instructions.baseInstructions import *
 from dataclasses import dataclass
+
+from instructions.baseInstructions import *
 
 
 @dataclass
@@ -33,6 +34,7 @@ class ShiftLeft(Instruction):
         # scraps 3 and 4 are used for div_imm()
 
         self.shift.get_cell(0).div_imm(4, shift_small, shift_big)
+        shift_small.copy(self.shift.get_cell(0), scrap=shift_big_scrap)
         shift_big.copy(self.shift.get_cell(0), multiplier=4, scrap=shift_big_scrap)
         self.shift.get_cell(1).div_imm(2, shift_scrap, shift_verybig_unused)
         shift_verybig_unused.move(self.shift.get_cell(1), multiplier=2)
@@ -66,10 +68,7 @@ class ShiftLeft(Instruction):
                 small_src.move(small_dst)
             shift_big.change(-1)
 
-        if self.dst != self.shift:
-            shift_small.move(self.shift.get_cell(0))
-        else:
-            shift_small.clear()
+        shift_small.clear()
         shift_big.clear()
         self.dst.normalize_big()
 
@@ -184,12 +183,7 @@ class ShiftRight(Instruction):
                     scrap3.move(small_dst.cell_rel(-1), multiplier=16)
                 else:
                     scrap3.clear()
-            if self.dst != self.shift:
-                scrap1.change(1)
             shift_small.change(-1)
-
-        if self.dst != self.shift:
-            scrap1.move(self.shift.get_cell(0))
 
 
 @dataclass
@@ -307,13 +301,9 @@ class ShiftRightArithmetic(Instruction):
                 else:
                     scrap3.clear()
             sign_bit.copy(sign_digit, scrap=sign_scrap, multiplier=8)
-            if self.dst != self.shift:
-                scrap1.change(1)
             shift_small.change(-1)
 
         sign_bit.clear()
-        if self.dst != self.shift:
-            scrap1.move(self.shift.get_cell(0))
 
 
 @dataclass
