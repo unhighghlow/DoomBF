@@ -9,10 +9,7 @@ ifneq ($(call has_macro,JIT),yes)
 	EXTRA += -llightning
 endif
 
-evaluator/config.h:
-	cp evaluator/config.def.h evaluator/config.h
-
-ibf: evaluator/ evaluator/config.h
+ibf: evaluator/
 	${CC} evaluator/main.c -g ${EXTRA} -O3 -o ibf ${CCFLAGS}
 
 bld: loader/
