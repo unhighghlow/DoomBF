@@ -237,7 +237,7 @@ left:
 
 left_wide:
         dp-=CMD_wide_arg(inst);
-        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=8;
         NEXT
 
