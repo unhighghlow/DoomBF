@@ -7,11 +7,11 @@ import argparse
 import re
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
-from queue import Queue
+from queue import Empty, Queue
 from threading import Thread
-
-import pexpect
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 PROMPT = re.compile(r"\x1b\[32m\$ \x1b\[0m")
@@ -90,29 +90,113 @@ def parse_stop(chunk: str):
     return mnemonic, next_addr, regs
 
 
-def get_output(child: pexpect.spawn, command: str, i: int, prnt: bool):
-    if prnt:
-        print(f"{command} #{i:08d}")
-    idx = child.expect([PROMPT, "assertion failed", pexpect.EOF], timeout=None)
-    chunk = child.before or ""
-    if idx == 1:
-        chunk += "assertion failed"
-        child.expect(pexpect.EOF, timeout=10)
-        chunk += child.before or ""
-        print(chunk)
-        sys.exit(1)
-    elif idx == 2:
-        print("ibf завершился")
-        sys.exit(1)
-    mnemonic, next_addr, regs = parse_stop(chunk)
-    if prnt:
-        print(
-            f"  next=0x{next_addr or 0:04x}\n"
-            f"  mnemonic={mnemonic}\n"
-            f"  ra_after=0x{regs.get(REGS_NAMES['ra'], 0):08x}"
+class IbfSession:
+    """subprocess-сессия ibf: stdout читается в фоне, stdin пишется без ожидания prompt."""
+
+    PIPELINE_DEPTH = 8
+
+    def __init__(self, cmd: list[str], cwd: Path) -> None:
+        self.proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=0,
         )
-    instr, args = parse_mnemonic(mnemonic)
-    return instr, args, next_addr, regs
+        self._buf = ""
+        self._buf_lock = threading.Lock()
+        self._stop_queue: Queue[str] = Queue()
+        self._eof = False
+        self._failed = False
+        self._reader = Thread(target=self._read_loop, daemon=True)
+        self._reader.start()
+
+    def _read_loop(self) -> None:
+        try:
+            assert self.proc.stdout is not None
+            while True:
+                chunk = self.proc.stdout.read(65536)
+                if not chunk:
+                    break
+                text = chunk.decode("utf-8", errors="replace")
+                with self._buf_lock:
+                    self._buf += text
+                    if "assertion failed" in self._buf:
+                        self._failed = True
+                        print(clean(self._buf))
+                        sys.exit(1)
+                    self._drain_stops()
+        finally:
+            self._eof = True
+
+    def _drain_stops(self) -> None:
+        while True:
+            match = PROMPT.search(self._buf)
+            if not match:
+                return
+            self._stop_queue.put(self._buf[: match.start()])
+            self._buf = self._buf[match.end() :]
+
+    def write(self, data: str) -> None:
+        assert self.proc.stdin is not None
+        self.proc.stdin.write(data.encode("utf-8"))
+        self.proc.stdin.flush()
+
+    def wait_for(self, needle: str, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._buf_lock:
+                if needle in self._buf:
+                    return
+            if self._eof or self._failed:
+                print("ibf завершился")
+                sys.exit(1)
+            time.sleep(0.01)
+        raise TimeoutError(f"timeout waiting for {needle!r}")
+
+    def wait_prompt(self, timeout: float | None = None) -> None:
+        try:
+            if timeout is None:
+                self._stop_queue.get()
+                return
+            self._stop_queue.get(timeout=timeout)
+        except Empty:
+            raise TimeoutError("timeout waiting for prompt") from None
+
+    def wait_stop(
+        self,
+        command: str = "w",
+        i: int = 0,
+        prnt: bool = False,
+    ):
+        while True:
+            try:
+                chunk = self._stop_queue.get(timeout=0.05)
+                break
+            except Empty:
+                if self._eof:
+                    print("ibf завершился")
+                    sys.exit(1)
+        if prnt:
+            print(f"{command} #{i:08d}")
+        mnemonic, next_addr, regs = parse_stop(chunk)
+        if prnt:
+            print(
+                f"  next=0x{next_addr or 0:04x}\n"
+                f"  mnemonic={mnemonic}\n"
+                f"  ra_after=0x{regs.get(REGS_NAMES['ra'], 0):08x}"
+            )
+        instr, args = parse_mnemonic(mnemonic)
+        return instr, args, next_addr, regs
+
+    def close(self) -> None:
+        if self.proc.stdin is not None:
+            try:
+                self.proc.stdin.close()
+            except OSError:
+                pass
+        self.proc.wait(timeout=5)
 
 
 def parse_imm(token: str) -> int:
@@ -263,7 +347,6 @@ def run_command(instr, args, next_addr_predict, regs_predict):
 
     assert current_addr is not None
     assert regs != {}
-
 
     curr_instr_num += 1
     print(f"w #{curr_instr_num:08d}")
@@ -417,11 +500,11 @@ def run_command(instr, args, next_addr_predict, regs_predict):
         )
 
 
-def dump_tape(child: pexpect.spawn, tmp: Path):
+def dump_tape(ibf: IbfSession, tmp: Path) -> None:
     print("dumping tape...")
-    subprocess.run(("rm", tmp / "tape.bin"))
-    child.sendline("D")
-    child.expect(PROMPT, timeout=30)
+    subprocess.run(("rm", "-f", str(tmp / "tape.bin")), check=False)
+    ibf.write("D\n")
+    ibf.wait_prompt(timeout=30)
     with open(tmp / "tape.bin", "rb") as file:
         tape = file.read()
     for i, byte in enumerate(tape[0x124 : (0x124 + (16**7))]):
@@ -429,7 +512,7 @@ def dump_tape(child: pexpect.spawn, tmp: Path):
     print("done")
 
 
-def runner():
+def runner() -> None:
     while True:
         instr, args, next_addr_predict, regs_predict = q_to_run.get()
         run_command(instr, args, next_addr_predict, regs_predict)
@@ -447,40 +530,43 @@ def main() -> int:
     ap.add_argument("--tmp", type=Path, default=Path("./tmp"))
     cmd_args = ap.parse_args()
 
-    cmd = f"{Path.absolute(cmd_args.ibf)} -acd {Path.absolute(cmd_args.bpk)}"
-    child = pexpect.spawn(cmd, cwd=str(cmd_args.tmp), encoding="utf-8")
-    child.expect("loading addrmap", timeout=10)
-    child.expect(PROMPT, timeout=30)
+    cmd = [
+        str(cmd_args.ibf.resolve()),
+        "-acd",
+        str(cmd_args.bpk.resolve()),
+    ]
+    ibf = IbfSession(cmd, cmd_args.tmp)
+    ibf.wait_for("loading addrmap", timeout=10)
+    ibf.wait_prompt(timeout=30)
 
     if RUN_COUNT > 0:
         for i in range(RUN_COUNT):
-            child.sendline("r")
-            _, _, next_addr_predict, regs_predict = get_output(child, "r", -1, True)
+            ibf.write("r\n")
+            _, _, next_addr_predict, regs_predict = ibf.wait_stop("r", i, True)
             current_addr = next_addr_predict
             regs = {
                 **regs_predict,
                 "x0": 0,
             }
     else:
-        child.sendline("w")
-        _, _, next_addr_predict, regs_predict = get_output(child, "w", -1, True)
+        ibf.write("w\n")
+        _, _, next_addr_predict, regs_predict = ibf.wait_stop("w", -1, True)
         current_addr = next_addr_predict
         regs = {
             **regs_predict,
             "x0": 0,
         }
 
-    dump_tape(child, cmd_args.tmp)
+    dump_tape(ibf, cmd_args.tmp)
     Thread(target=runner).start()
 
+    ibf.write("w\n" * IbfSession.PIPELINE_DEPTH)
     i = 0
     while True:
-        child.sendline("w")
-        instr, args, next_addr_predict, regs_predict = get_output(child, "w", i, False)
+        instr, args, next_addr_predict, regs_predict = ibf.wait_stop("w", i, False)
         q_to_run.put((instr, args, next_addr_predict, regs_predict))
+        ibf.write("w\n")
         i += 1
-    child.sendline("q")
-    return 0
 
 
 if __name__ == "__main__":
