@@ -204,16 +204,16 @@ int main(int argc, char *argv[]) {
     // int i = 0;
     while (1) {
         EnvWrite("[OP] Getting events\n", 20);
-        // while (1) {
-        //     ev = EnvGetCharBlock();
-        //     if (!ev) break;
-        //     process_keyevent(ev);
-        //     EnvWrite("[OP] Event: ", 12);
-        //     EnvPutChar('0'+(ev>>8));
-        //     EnvPutChar('0'+(ev&0xf));
-        //     EnvPutChar('\n');
-        // }
-        process_keyevent(5);
+        while (1) {
+            ev = EnvGetCharBlock();
+            if (!ev) break;
+            process_keyevent(ev);
+            EnvWrite("[OP] Event: ", 12);
+            EnvPutChar('0'+(ev>>8));
+            EnvPutChar('0'+(ev&0xf));
+            EnvPutChar('\n');
+        }
+        // process_keyevent(5);  // enter
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
