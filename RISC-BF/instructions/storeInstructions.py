@@ -34,16 +34,15 @@ class StoreWord(Instruction):
         addr_scrap = mem_scraps[MEMORY_ADDRESS_HALFBYTES + 1]
         data_cells = mem_scraps[MEMORY_ADDRESS_HALFBYTES + 2:]
         first_mem_cell = mem_scraps[-1].cell_rel(1)
+        if self.src != ZERO:
+            for i in range(byte_count * 2):  # Move src to data
+                small_src = self.src.get_cell(i)
+                small_src.copy(data_cells[i // 2], scrap=zero_scrap, multiplier=(1 if i % 2 == 0 else 16))
         if self.addr.offset >= 0:
             need_mem_cell = first_mem_cell.cell_rel(self.addr.offset)
         else:
             need_mem_cell = first_mem_cell
             AddI(self.addr.register, self.addr.register, self.addr.offset).evaluate(program, cur_block)
-
-        if self.src != ZERO:
-            for i in range(byte_count * 2):  # Move src to data
-                small_src = self.src.get_cell(i)
-                small_src.copy(data_cells[i // 2], scrap=zero_scrap, multiplier=(1 if i % 2 == 0 else 16))
         for i in range(8):
             if i < MEMORY_ADDRESS_HALFBYTES:
                 self.addr.register.get_cell(i).copy(addr_cells[i], scrap=zero_scrap)
