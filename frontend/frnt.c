@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
 
 #define BYTES_PER_PIXEL 4
@@ -15,7 +14,6 @@ void read_until_image();
 short read_short();
 void full_read(char*, int);
 
-int col = 0;
 #define KEY_UP      0x01
 #define KEY_DOWN    0x02
 #define KEY_LEFT    0x03
@@ -54,18 +52,6 @@ static void send_keyaction(int k, int action) {
     putc(k, stdout);
 }
 
-int set_stdin_nonblocking()
-{
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    if (flags == -1)
-        return -1;
-    if (fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) == -1)
-        return -1;
-    return 0;
-}
-
-#define STATUSBAR_HEIGHT 10
-
 int main(int argc, char *argv[]) {
         int cur_width;
         int cur_height;
@@ -96,29 +82,10 @@ int main(int argc, char *argv[]) {
 
         setvbuf(stdout, NULL, _IONBF, 0);
         setvbuf(stdin, NULL, _IONBF, 0);
-        if (set_stdin_nonblocking())
-            exit(2);
-
-#define READ_UNTIL_IMAGE \
-                    char chr = 0; \
-                    if (read(STDIN_FILENO, &chr, 1) < 1) { \
-                        if (errno == EAGAIN || errno == EWOULDBLOCK) { \
-                            continue; \
-                        } \
-                        perror("error reading stdin"); \
-                        exit(1); \
-                    } \
-                    if (!chr) break; \
-                    fprintf(stderr, "%c", chr);
-
-#define UPDATE XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height); XFlush(dpy);
 
         int running = 1;
-        while (1) {
-            READ_UNTIL_IMAGE
-        }
-        putc(0, stdout);
         while (running) {
+                read_until_image();
                 fprintf(stderr, "[frnt] Image begin\n");
                 new_width = read_short();
                 new_height = read_short();
@@ -138,7 +105,7 @@ int main(int argc, char *argv[]) {
 
                         win = XCreateWindow(
                                 dpy, root,
-                                0, 0, cur_width, cur_height+STATUSBAR_HEIGHT,
+                                0, 0, cur_width, cur_height,
                                 0,
                                 DefaultDepth(dpy, screen),
                                 InputOutput,
@@ -155,7 +122,7 @@ int main(int argc, char *argv[]) {
                                 0,                
                                 cur_buf,           
                                 cur_width,
-                                cur_height+STATUSBAR_HEIGHT,
+                                cur_height,
                                 32,               // bitmap_pad
                                 cur_width * BYTES_PER_PIXEL // bytes_per_line
                         );
@@ -174,7 +141,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 fprintf(stderr, "[frnt] Reading %d bytes\n", read_img_size);
-                full_read(cur_temp_buf+(cur_width*STATUSBAR_HEIGHT*3), read_img_size);
+                full_read(cur_temp_buf, read_img_size);
                 fprintf(stderr, "[frnt] Read done\n");
 
                 int j = 0;
@@ -186,91 +153,63 @@ int main(int argc, char *argv[]) {
                         cur_buf[i+3] = 0xff;
                 }
 
-                UPDATE
+                XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
+                XFlush(dpy);
+                XPutImage(dpy, win, gc, img, 0, 0, 0, 0, cur_width, cur_height);
+                XFlush(dpy);
 
-                for (int i = 0; i < 10; i++) {
-                        new_pressed[i] = cur_pressed[i];
-                }
-                while (1) {
-                    char br;
-                    char bg;
-                    char bb;
-                    for (int b = 0; b < 11; b++) {
-                            if (b == 0) {
-                                    br = 0x00;
-                                    bg = 0x00;
-                                    bb = 0x00;
-                                    switch (col) {
-                                            case 0: br = 0xff; break;
-                                            case 1: bg = 0xff; break;
-                                            case 2: bb = 0xff; break;
-                                    }
+                memset(new_pressed, 0, 10);
+                while (XPending(dpy)) {
+                    XEvent ev;
+                    int kv;
+                    XNextEvent(dpy, &ev);
+                    switch (ev.type) {
+                        case Expose:
+                            break;
+                        case ConfigureNotify:
+                            break;
+                        case KeyPress: {
+                            KeySym ks = XLookupKeysym(&ev.xkey, 0);
+                            if (ks == XK_q) { running = 0; }
+                            kv = parse_key(ks);
+                            new_pressed[kv] = 2;
+                        } break;
+                        case KeyRelease: {
+                            KeySym ks = XLookupKeysym(&ev.xkey, 0);
+                            kv = parse_key(ks);
+                            if (new_pressed[kv] && !cur_pressed[kv]) {
+                                    new_pressed[kv] = 1;
                             } else {
-                                    br = 0x00;
-                                    bg = 0x00;
-                                    bb = 0x00;
-                                    if (!new_pressed[b] && cur_pressed[b]) {
-                                            br = 0xff;
-                                    }
-                                    if (new_pressed[b] && cur_pressed[b]) {
-                                            br = 0xff;
-                                            bg = 0xff;
-                                            bb = 0xff;
-                                    }
-                                    if (new_pressed[b] && !cur_pressed[b]) {
-                                            bb = 0xff;
-                                    }
+                                    new_pressed[kv] = -1;
                             }
-                            for (int x = 0; x < STATUSBAR_HEIGHT; x++) {
-                                    for (int y = 0; y < STATUSBAR_HEIGHT; y++) {
-                                            int a = BYTES_PER_PIXEL*(x+(b*STATUSBAR_HEIGHT)+y*cur_width);
-                                            cur_buf[a+0] = br;
-                                            cur_buf[a+1] = bg;
-                                            cur_buf[a+2] = bb;
-                                            cur_buf[a+3] = 0xff;
-                                    }
-                            }
+                        } break;
+                        case ClientMessage:
+                        default:
+                            break;
                     }
-                    UPDATE
-                    while (XPending(dpy)) {
-                        XEvent ev;
-                        int kv;
-                        XNextEvent(dpy, &ev);
-                        switch (ev.type) {
-                            case Expose:
-                                break;
-                            case ConfigureNotify:
-                                break;
-                            case KeyPress: {
-                                KeySym ks = XLookupKeysym(&ev.xkey, 0);
-                                if (ks == XK_q) { running = 0; }
-                                kv = parse_key(ks);
-                                new_pressed[kv] = !new_pressed[kv];
-                            } break;
-                            case ClientMessage:
-                            default:
-                                break;
-                        }
-                    }
-                    READ_UNTIL_IMAGE
                 }
 
                 for (int i = 0; i < 10; i++) {
-                        if (!cur_pressed[i] && new_pressed[i]) {
-                                cur_pressed[i] = 1;
+                        if (!cur_pressed[i] && new_pressed[i] > 0) {
+                                cur_pressed[i] = new_pressed[i];
                                 send_keyaction(i, 1);
                                 continue;
                         }
-                        if (cur_pressed[i] && !new_pressed[i]) {
+                        if (cur_pressed[i] && new_pressed[i] < 0) {
                                 cur_pressed[i] = 0;
+                                fprintf(stderr, "depress\n");
+                                send_keyaction(i, 2);
+                                continue;
+                        }
+                        if (cur_pressed[i] == 1 && new_pressed[i] < 1) {
+                                cur_pressed[i] = 0;
+                                fprintf(stderr, "depress(1)\n");
                                 send_keyaction(i, 2);
                                 continue;
                         }
                 }
                 putc(0, stdout);
                 fflush(stdout);
-                col++;
-                col%=3;
         }
 
         if (cur_buf) {
@@ -287,14 +226,12 @@ void full_read(char *buf, int size) {
         int bytes_read_i;
         while (1) {
                 bytes_read_i = read(STDIN_FILENO, buf, size - bytes_read);
-                if (bytes_read_i > 0) {
-                        bytes_read += bytes_read_i;
-                        buf += bytes_read_i;
-                        if (bytes_read >= size) {
-                                break;
-                        }
+                bytes_read += bytes_read_i;
+                buf += bytes_read_i;
+                if (bytes_read >= size) {
+                        break;
                 }
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (errno == EAGAIN) {
                         continue;
                 }
 
