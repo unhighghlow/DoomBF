@@ -536,37 +536,40 @@ def main() -> int:
         str(cmd_args.bpk.resolve()),
     ]
     ibf = IbfSession(cmd, cmd_args.tmp)
-    ibf.wait_for("loading addrmap", timeout=10)
-    ibf.wait_prompt(timeout=30)
+    try:
+        # ibf.wait_for("loading addrmap", timeout=30)
+        ibf.wait_prompt(timeout=30)
 
-    if RUN_COUNT > 0:
-        for i in range(RUN_COUNT):
-            ibf.write("r\n")
-            _, _, next_addr_predict, regs_predict = ibf.wait_stop("r", i, True)
+        if RUN_COUNT > 0:
+            for i in range(RUN_COUNT):
+                ibf.write("r\n")
+                _, _, next_addr_predict, regs_predict = ibf.wait_stop("r", i, True)
+                current_addr = next_addr_predict
+                regs = {
+                    **regs_predict,
+                    "x0": 0,
+                }
+        else:
+            ibf.write("w\n")
+            _, _, next_addr_predict, regs_predict = ibf.wait_stop("w", -1, True)
             current_addr = next_addr_predict
             regs = {
                 **regs_predict,
                 "x0": 0,
             }
-    else:
-        ibf.write("w\n")
-        _, _, next_addr_predict, regs_predict = ibf.wait_stop("w", -1, True)
-        current_addr = next_addr_predict
-        regs = {
-            **regs_predict,
-            "x0": 0,
-        }
 
-    dump_tape(ibf, cmd_args.tmp)
-    Thread(target=runner).start()
+        dump_tape(ibf, cmd_args.tmp)
+        Thread(target=runner).start()
 
-    ibf.write("w\n" * IbfSession.PIPELINE_DEPTH)
-    i = 0
-    while True:
-        instr, args, next_addr_predict, regs_predict = ibf.wait_stop("w", i, False)
-        q_to_run.put((instr, args, next_addr_predict, regs_predict))
-        ibf.write("w\n")
-        i += 1
+        ibf.write("w\n" * IbfSession.PIPELINE_DEPTH)
+        i = 0
+        while True:
+            instr, args, next_addr_predict, regs_predict = ibf.wait_stop("w", i, False)
+            q_to_run.put((instr, args, next_addr_predict, regs_predict))
+            ibf.write("w\n")
+            i += 1
+    finally:
+        ibf.close()
 
 
 if __name__ == "__main__":
