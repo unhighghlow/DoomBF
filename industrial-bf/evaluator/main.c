@@ -143,7 +143,8 @@ const void* jumptable[0x100];
 
 void evaluate(uint8_t program[]) {
 #ifdef DEBUGGER
-        debugger_init();
+        if (option_d)
+                debugger_init();
 #endif
         register uint64_t pc = 0;
         register uint64_t dp = 0;
@@ -171,6 +172,7 @@ void evaluate(uint8_t program[]) {
         jumptable['0'] = &&zero;
 #ifdef DEBUGGER
         jumptable['#'] = &&breakinst;
+        jumptable['*'] = &&weak_breakinst;
 #endif
 #ifdef ASSERTS
         jumptable['@'] = &&assert_location;
@@ -179,11 +181,20 @@ void evaluate(uint8_t program[]) {
 
 #ifdef DEBUGGER
 
+#ifdef DEBUGGER_STEP
+
 #define NEXT \
         inst = &program[pc]; \
-        if (option_d && CMD_cmd(inst) != '#') \
+        if (option_d && CMD_cmd(inst) != '#' && CMD_cmd(inst) != '*') \
                 debugger_call(BREAK_REASON_INSTRUCTION, tape, program, dp, pc); \
         goto *(jumptable[CMD_cmd(inst)]);
+
+#else
+
+#define NEXT \
+        inst = &program[pc]; \
+        goto *(jumptable[CMD_cmd(inst)]);
+#endif
 
 #else
 
@@ -226,7 +237,7 @@ left:
 
 left_wide:
         dp-=CMD_wide_arg(inst);
-        CHECK_PAGE_TRANSITION(tape, 1, dp, last_page);
+        CHECK_PAGE_TRANSITION(tape, -1, dp, last_page);
         pc+=8;
         NEXT
 
@@ -289,9 +300,14 @@ zero:
 
 #ifdef DEBUGGER
 breakinst:
-        if (!option_d) { NEXT }
+        if (!option_d) { pc+=1; NEXT }
         debugger_call(BREAK_REASON_BREAKPOINT, tape, program, dp, pc);
         pc+=1;
+        NEXT
+weak_breakinst:
+        if (!option_d) { pc+=1; NEXT }
+        pc+=1;
+        debugger_call(BREAK_REASON_WEAK_BREAKPOINT, tape, program, dp, pc);
         NEXT
 #endif
 
@@ -327,5 +343,9 @@ assert_common:
 #endif
 
 exit:
+#ifdef DEBUGGER
+        if (option_d && !option_o)
+                debugger_print_output();
+#endif
         return;
 }

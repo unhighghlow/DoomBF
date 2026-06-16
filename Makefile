@@ -3,7 +3,7 @@ all: ibf frnt doom.bpk
 run: all
 	rm .pipe || true
 	mkfifo .pipe
-	./ibf -c doom.bpk < .pipe | ./frnt > .pipe
+	./ibf -ac doom.bpk < .pipe | ./frnt > .pipe
 
 clean:
 	rm -f ./ibf ./frnt ./doom.bpk

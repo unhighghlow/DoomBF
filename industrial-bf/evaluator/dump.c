@@ -7,17 +7,19 @@ void dump_tape() {
                 perror("failed to open tape file");
                 return;
         }
-        uint64_t written;
-        uint64_t block;
+        uint64_t written = 0;
+        int64_t block;
         char *buf = tape;
         while (written < HOT_TAPE) {
                 block = write(fd, buf, HOT_TAPE - written);
-                if (!block) {
+                if (block <= 0) {
+                        close(fd);
                         perror("failed to write tape");
                         return;
                 }
                 written += block;
                 buf += block;
         }
+        close(fd);
         printf("done\n");
 }

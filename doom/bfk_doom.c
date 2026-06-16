@@ -201,6 +201,7 @@ int main(int argc, char *argv[]) {
     output_image(pixels);
 
     unsigned char ev;
+    // int i = 0;
     while (1) {
         EnvWrite("[OP] Getting events\n", 20);
         while (1) {
@@ -212,12 +213,19 @@ int main(int argc, char *argv[]) {
             EnvPutChar('0'+(ev&0xf));
             EnvPutChar('\n');
         }
+        // process_keyevent(5);  // enter
         g_BrainfuckDoomControlRegs.pixels = pixels;
         g_BrainfuckDoomControlRegs.width  = g_DoomWinWidth;
         g_BrainfuckDoomControlRegs.height = g_DoomWinHeight;
         EnvWrite("[OP] Running game\n", 18);
         CrtDoomIteration();
         output_image(pixels);
+#ifdef _BF
+        // i++;
+        // if (i == 6)
+        //     EnvExit(1);  // It is before GDHIGH not found
+        __asm__ volatile("ebreak");
+#endif
 #ifndef _BF
         //usleep(1000);
 #endif

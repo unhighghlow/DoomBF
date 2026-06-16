@@ -1,5 +1,6 @@
 #define BREAK_REASON_INSTRUCTION ((uint8_t)1)
 #define BREAK_REASON_BREAKPOINT ((uint8_t)2)
+#define BREAK_REASON_WEAK_BREAKPOINT ((uint8_t)3)
 
 #define TYPOGRAPHIC_CELL_WIDTH ((sizeof (CELL)) * 2)
 
@@ -12,6 +13,7 @@
 enum dbg_state {
         DBG_STEP,
         DBG_RUN,
+        DBG_RUN_UNTIL_WEAK,
         DBG_EXIT_SEARCH,
         DBG_EXIT_RUN,
         DBG_SM_NEXT
@@ -52,9 +54,13 @@ void debugger_help() {
         printf(
                 "? - display help\n"
                 "r - run the program until a breakpoint is reached\n"
+                "w - run the program until a weak breakpoint is reached\n"
+#ifdef DEBUGGER_STEP
                 "s - step one instruction forward\n"
                 "x - run until the current loop ends\n"
                 "n - run until the next sourcemap line\n"
+#endif
+                "D - dump tape\n"
                 "a - load an addrmap file\n"
                 "q - quit\n"
         );
@@ -239,6 +245,10 @@ skip_prompt:
                         case 'r':
                                 debugger_state = DBG_RUN;
                                 goto continue_execution;
+                        case 'w':
+                                debugger_state = DBG_RUN_UNTIL_WEAK;
+                                goto continue_execution;
+#ifdef DEBUGGER_STEP
                         case 's':
                                 debugger_state = DBG_STEP;
                                 goto continue_execution;
@@ -251,6 +261,7 @@ skip_prompt:
                                 sm_next_target = get_current_sm_ind(pc)+1;
                                 debugger_state = DBG_SM_NEXT;
                                 goto continue_execution;
+#endif
                         case 'a':
                                 printf(G_FG "addrmap: " FG_r);
                                 fgets(filename, 16, stdin);
@@ -259,6 +270,9 @@ skip_prompt:
                                         filename[len-1] = 0;
                                 }
                                 load_addrmap(filename);
+                                break;
+                        case 'D':
+                                dump_tape();
                                 break;
                         case 'q':
                                 exit(0);
@@ -520,6 +534,9 @@ uint8_t debugger_print_instruction(uint8_t *inst) {
                 case '#':
                         printf("%c\n", cmd);
                         return 1;
+                case '*':
+                        printf("%c\n", cmd);
+                        return 1;
                 case 0:
                         printf("end\n");
                         return 0;
@@ -553,8 +570,10 @@ void debugger_call(uint8_t reason, CELL tape[], uint8_t program[], uint64_t dp, 
         if (reason != BREAK_REASON_BREAKPOINT)
                 switch (debugger_state) {
                         case DBG_RUN:
-                                if (!program[pc])
-                                        debugger_print_output();
+                                return;
+                        case DBG_RUN_UNTIL_WEAK:
+                                if (reason == BREAK_REASON_WEAK_BREAKPOINT)
+                                        break;
                                 return;
                         case DBG_STEP:
                                 break;
